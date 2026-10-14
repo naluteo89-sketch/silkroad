@@ -1,0 +1,9 @@
+{
+  "name": "silkroad_miniature_v2",
+  "positive": "masterpiece persian miniature painting of a silk road scene, 16th century illuminated manuscript style, intricate ornamental details, fine ink outlines, mineral pigments, lapis lazuli blue, vermilion, ochre and gold leaf, richly decorated saddle and textiles, stylized hills and clouds, aged paper texture, highly detailed, best quality",
+  "negative": "photo, photorealistic, 3d render, anime, cartoon, child drawing, crayon, flat colors, simple shapes, abstract, blurry, low quality, lowres, distorted, deformed, extra limbs, duplicate objects, text, watermark, logo, signature",
+  "denoise": 0.85,
+  "steps": 30,
+  "cfg": 7.0,
+  "controlStrength": 0.65
+}

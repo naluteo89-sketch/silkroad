@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Silkroad generation result metadata",
+  "type": "object",
+  "required": ["sessionId", "requestId", "sourceImageId", "seed", "width", "height", "createdAt"],
+  "properties": {
+    "sessionId":      { "type": "string", "description": "시작하기를 누를 때마다 새로 발급" },
+    "requestId":      { "type": "integer", "description": "앱 실행 중 요청 순번 (재요청마다 증가)" },
+    "sourceImageId":  { "type": "string", "description": "보내기마다 발급. 재요청은 같은 값 유지" },
+    "promptId":       { "type": ["string", "null"], "description": "ComfyUI prompt_id (더미 모드는 dummy-xxxx)" },
+    "seed":           { "type": "integer" },
+    "styleId":        { "type": ["string", "null"], "description": "preset.name" },
+    "workflow":       { "type": ["string", "null"], "description": "StreamingAssets 기준 워크플로 경로" },
+    "width":          { "type": "integer" },
+    "height":         { "type": "integer" },
+    "elapsedSeconds": { "type": "number", "description": "보내기 → 결과 표시까지" },
+    "createdAt":      { "type": "string", "format": "date-time" }
+  }
+}

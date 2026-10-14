@@ -1,0 +1,67 @@
+{
+  "workflow": "workflows/drawing_to_silkroad.api.json",
+  "version": "0.3.0",
+  "description": "Unity ComfyUIClient 가 실행 전에 치환하는 자리표시자와 담당 노드. 워크플로를 바꾸면 이 파일도 같이 고칠 것.",
+  "placeholders": {
+    "{{INPUT_IMAGE}}": {
+      "node": "4",
+      "input": "image",
+      "source": "Unity: /upload/image 응답의 name",
+      "type": "string"
+    },
+    "{{POSITIVE}}": {
+      "node": "2",
+      "input": "text",
+      "source": "preset.positive",
+      "type": "string"
+    },
+    "{{NEGATIVE}}": {
+      "node": "3",
+      "input": "text",
+      "source": "preset.negative",
+      "type": "string"
+    },
+    "{{CONTROL_STRENGTH}}": {
+      "node": "8",
+      "input": "strength",
+      "source": "preset.controlStrength",
+      "type": "number"
+    },
+    "{{SEED}}": {
+      "node": "10",
+      "input": "seed",
+      "source": "Unity: 요청마다 랜덤",
+      "type": "number"
+    },
+    "{{STEPS}}": {
+      "node": "10",
+      "input": "steps",
+      "source": "preset.steps",
+      "type": "number"
+    },
+    "{{CFG}}": {
+      "node": "10",
+      "input": "cfg",
+      "source": "preset.cfg",
+      "type": "number"
+    },
+    "{{DENOISE}}": {
+      "node": "10",
+      "input": "denoise",
+      "source": "preset.denoise",
+      "type": "number"
+    }
+  },
+  "output": {
+    "node": "12",
+    "class_type": "SaveImage",
+    "note": "결과는 /history/{prompt_id} 의 이 노드 출력에서 가져옴"
+  },
+  "fixed_size": {
+    "node": "5",
+    "width": 1280,
+    "height": 720,
+    "note": "Unity 캔버스 1280x720 과 동일 (Comfy Cloud UI 워크플로 기준)"
+  },
+  "notes": "13=ImageBlur(img2img 입력을 부드럽게) 추가. 입력 이미지는 항상 노드 4(LoadImage) → 5(ImageScale) 에서 시작"
+}

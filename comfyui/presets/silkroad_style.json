@@ -1,0 +1,9 @@
+{
+  "name": "silkroad_miniature_v2",
+  "positive": "(masterpiece, best quality, ultra-detailed, 8k), traditional Persian miniature painting, ancient Silk Road art style, highly intricate details, flat perspective, rich and vibrant colors, (a wise old merchant with a long white beard wearing an ornate red and gold patterned robe and a jeweled turban:1.2), sitting on a highly detailed Persian carpet, holding a thin rope, (a majestic brown horse with a beautifully decorated red and gold saddle and bridle:1.2), standing on sandy ground with sparse grass, scenic background, (a grand ancient Middle Eastern city with domed mosques and towers:1.1), calm blue river with small wooden boats, snow-capped mountains in the distance, clear blue sky with stylized fluffy clouds, gold leaf accents, antique texture, masterpiece illustration, ornate golden frame",
+  "negative": "(worst quality, low quality:1.4), 3d render, photorealistic, modern, photograph, blurry, messy lines, stick figure, child's drawing, crayon, simple colors, deformed, bad anatomy, bad proportions, text, watermark, signature, ugly, distorted face, extra limbs",
+  "denoise": 0.85,
+  "steps": 30,
+  "cfg": 7.0,
+  "controlStrength": 0.75
+}

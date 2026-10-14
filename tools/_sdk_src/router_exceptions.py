@@ -1,0 +1,950 @@
+"""Typed exceptions for the Comfy Router model-run surface (``client.models``).
+
+One class per ``error_type`` in the router's closed error set, so a caller
+branches on a class rather than on a string::
+
+    from comfy_sdk.router_exceptions import ContentPolicyViolation, RouterError
+
+    try:
+        ...                                    # a client.models call
+    except ContentPolicyViolation as exc:
+        print(exc.detail, exc.request_id)      # deterministic — do not retry
+    except RouterError as exc:
+        report(exc.error_type, exc.request_id)
+
+Three properties of this module are contract, not taste:
+
+**The class name is the PascalCase of the wire value, always.** ``invalid_input``
+is :class:`InvalidInput`, ``content_policy_violation`` is
+:class:`ContentPolicyViolation`. That mechanical rule is what keeps this list and
+the TypeScript SDK's identical without either side maintaining a second table --
+an example ported between the two languages finds the same names.
+``test_router_exceptions.py`` asserts the rule over every class, so a
+hand-picked name cannot creep in.
+
+**Every class derives from :class:`RouterError`.** A caller who wants the broad
+catch writes ``except RouterError``; one who wants a single failure mode names
+it. ``RouterError`` in turn derives from :class:`~comfy_sdk.exceptions.ComfyError`,
+so ``except ComfyError`` still covers the whole SDK.
+
+**The set comes from the vendored contract, not from this file.**
+``spec/router-openapi.yaml`` carries the closed bucket list as
+``x-comfy-error-types``, one entry per wire value with the ``meaning`` text the
+class docstrings below reproduce. ``tests/test_router_spec_contract.py`` reads
+that list and asserts a class exists for every value, in the same order, so a
+bucket the contract adds cannot land in the SDK as an untyped
+``RouterError`` without a test going red. ``scripts/check_drift.py`` runs the
+same comparison in CI, which is what makes the next vendored Router sync a real
+diff review rather than a silent widening.
+
+That gate reads values and order, which say nothing about the prose -- so a
+sync that rewrites a bucket's ``meaning`` (its retry guidance, say) would leave
+the docstring below silently stale with every check green. Each class therefore
+carries a ``_spec_meaning_digest``: :func:`_meaning_digest` of the ``meaning``
+its docstring was written against. It is a read marker, never a comparison
+against the docstring -- these docstrings deliberately reword the prose into
+reST, so equality is impossible by design -- and re-blessing one is a deliberate
+re-read, which is the whole point.
+
+**An unrecognised ``error_type`` raises the base class rather than failing.**
+The error set grows on the server's release cycle while an SDK is pinned by its
+users, so a bucket this version has never heard of must still arrive as a
+catchable exception carrying its raw ``error_type`` -- treat one like
+``internal_error``. A client that rejected the unknown value would fail hardest
+exactly when something has already gone wrong.
+
+Three of these names -- ``Unauthorized``, ``Forbidden``, ``InsufficientCredits``
+-- also exist in :mod:`comfy_sdk.exceptions`, which is where the workflow
+surface's error codes are mapped. **They are the same class object, defined
+here and re-exported there**, so ``comfy_sdk.exceptions.Unauthorized is
+comfy_sdk.router_exceptions.Unauthorized`` and either import catches whatever
+the other one does. ``tests/test_exception_modules.py`` asserts that of every
+name the two modules share.
+
+They used to be two classes with one name, and that was a dead handler rather
+than a naming nit: the class ``to_sdk_error`` actually raised for a router
+``402`` was the ``exceptions`` one, which did **not** descend from
+:class:`RouterError` -- so ``except RouterError`` around a call that refused
+for insufficient credits, a rejected key or a model the caller is not entitled
+to compiled, type-checked, and caught nothing. Merging them is what makes the
+broad catch honest. The consequence to know is the other direction: a *workflow*
+call that fails ``401``/``403``/``402`` now raises a :class:`RouterError`
+subclass too, because one class cannot be a ``RouterError`` on one surface and
+not on the other. ``except Unauthorized`` (from either module) is unchanged;
+``except RouterError`` is wider than the name suggests for exactly those three
+buckets.
+
+This module is still deliberately *not* star-re-exported from the package root:
+lifting :class:`NotEnabled` there while ``comfy_sdk.InvalidInput`` stayed a name
+that does not exist would leave a caller guessing which half of one hierarchy
+lives where. One import path for the whole set is the property worth keeping,
+and ``from comfy_sdk.router_exceptions import NotEnabled`` is it.
+:class:`RouterError` itself *is* lifted to the root, because it is the one name
+a caller writing a broad handler reaches for first -- and so are
+:class:`CancelRefused` and :class:`AlreadyCompleted`, which a caller handles at
+the ``cancel()`` call site rather than through this module. Those three are the
+whole of the package root's share; everything else is ``from
+comfy_sdk.router_exceptions import ...``.
+
+The coarse bucket is not the whole story. A per-field model-validation failure
+carries a ``detail`` *array* whose entries keep the specific, provider-level
+reason; those arrive as :class:`ValidationErrorDetail` on ``.errors``, with
+``loc``/``msg``/``type``/``ctx`` readable as data. The exception message
+summarises them for a human, but the branch a caller writes reads the entries.
+"""
+
+from __future__ import annotations
+
+import hashlib
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
+from typing import Any
+
+from comfy_low.errors import _location, clean_body_excerpt, clean_request_id, summarise_detail
+
+from ._errors import ComfyError
+
+#: Response header carrying the coarse failure bucket. Set on every router error
+#: response, and on a per-field validation failure it is the only place the
+#: bucket appears -- that body has no ``error_type`` field of its own.
+ERROR_TYPE_HEADER = "X-Comfy-Error-Type"
+
+#: Response header carrying the server-minted id for the call, present on every
+#: response. It is the id a user quotes in a support request, so it is attached
+#: to every exception this module raises.
+REQUEST_ID_HEADER = "X-Comfy-Request-Id"
+
+#: Response header naming the pace at which to ask again, in seconds. The
+#: contract documents it on the throttled buckets (:class:`RateLimited`,
+#: :class:`ConcurrencyLimitExceeded`) and on a ``deadline_exceeded`` ``504``.
+#: It is read here rather than dropped because
+#: :func:`comfy_sdk.retry.retry_after_of` is what
+#: :meth:`~comfy_sdk.retry.RetryPolicy.should_retry` keys both of its
+#: default-on branches on -- the ``429`` and the collectable ``504``/``409``:
+#: a router error that arrived without this attribute would make those branches
+#: unreachable and turn the retry the default policy is built to make into a
+#: silent no-op.
+RETRY_AFTER_HEADER = "Retry-After"
+
+
+def _meaning_digest(meaning: str) -> str:
+    """First 12 hex of sha256 of the whitespace-normalized spec prose.
+
+    The single source of truth for the ``_spec_meaning_digest`` markers below,
+    for ``scripts/check_drift.py`` and for
+    ``tests/test_router_spec_contract.py`` -- three readers of one rule, so a
+    checker and a test can never disagree about what a bucket's digest is.
+
+    It hashes the **spec's** ``meaning``, never a docstring: a digest says "the
+    docstring was written against this version of the prose", which is a
+    question a checker can answer, where "does the docstring say the same
+    thing" is not.
+
+    ``" ".join(meaning.split())`` first, so a sync that only re-wraps a line or
+    re-indents a YAML block scalar does not demand a re-read that has nothing
+    to read. Truncated to 12 hex characters because this is a change detector
+    pasted into source by hand, not a security boundary.
+    """
+    return hashlib.sha256(" ".join(meaning.split()).encode("utf-8")).hexdigest()[:12]
+
+
+@dataclass(frozen=True)
+class ValidationErrorDetail:
+    """One per-field model-validation failure.
+
+    ``type`` is the specific, provider-level reason (``value_error``,
+    ``missing``, ``image_too_small``, ``file_too_large``, ...) and is where the
+    granularity the coarse ``error_type`` bucket cannot express survives. It is
+    an open string: the provider vocabulary grows on the provider's release
+    cycle, not the SDK's, so an unmodelled value must reach the caller rather
+    than fail decoding.
+    """
+
+    #: Path to the offending field, outermost segment first --
+    #: ``("body", "image_url")``, or ``("body", "images", 0)`` where an integer
+    #: indexes into an array.
+    loc: tuple[str | int, ...] = ()
+    #: Human-readable description of this single failure.
+    msg: str = ""
+    #: Specific, machine-readable reason, passed through from the provider.
+    type: str = ""
+    #: The violated bound, when the reason carries one -- ``{"limit_value": 8}``
+    #: alongside ``greater_than``, ``{"min_width": 512}`` alongside
+    #: ``image_too_small``. Deliberately an open mapping: narrowing it to a fixed
+    #: field list is how a ported integration silently loses the branch that read
+    #: the bound. ``None`` when the reason carries no bound.
+    ctx: Mapping[str, Any] | None = None
+    #: The offending input value echoed back, so a caller can see what was
+    #: rejected without re-deriving it from ``loc``. Any JSON type, and ``None``
+    #: both when the value was null and when it was not echoed back at all.
+    input: Any = None
+
+    @property
+    def location(self) -> str:
+        """``loc`` as a dotted path -- ``body.images.0`` -- for display.
+
+        The one renderer :func:`comfy_low.errors.summarise_detail` uses, shared
+        rather than restated so this property and the summary built from the
+        same array can never disagree about what a field is called.
+        """
+        return _location(self.loc)
+
+
+class RouterError(ComfyError):
+    """Base for every Comfy Router failure, and what an unknown bucket raises.
+
+    ``error_type`` is the wire value; on this base class it is whatever the
+    server sent, including a value this SDK version does not know.
+    """
+
+    #: The wire ``error_type`` this class maps to. Empty on the base, which is
+    #: reached only by an unrecognised bucket (the instance sets it there).
+    error_type: str = ""
+
+    def __init__(
+        self,
+        detail: str,
+        *,
+        error_type: str | None = None,
+        http_status: int | None = None,
+        details: dict[str, Any] | None = None,
+        request_id: str | None = None,
+        retry_after: int | None = None,
+        errors: Sequence[ValidationErrorDetail] = (),
+    ) -> None:
+        resolved = error_type if error_type is not None else self.error_type
+        super().__init__(detail, code=resolved or None, http_status=http_status, details=details)
+        if error_type is not None:
+            self.error_type = error_type
+        #: Human-readable description of the failure, safe to show a user. Not
+        #: machine-parsed -- branch on the exception class instead. Safe in the
+        #: literal sense too on everything the builders in this module return:
+        #: where the text came off the wire -- either spelling of Router's
+        #: ``detail`` -- it is run through ``comfy_low.errors.clean_body_excerpt``
+        #: first, so it reaches a caller as printable characters on a single
+        #: line, capped at 256, and cannot repaint a terminal or flood a log
+        #: line; where the response described nothing, the value is this SDK's
+        #: own status-derived sentence. Constructing the class by hand bypasses
+        #: both -- the argument is taken as given.
+        self.detail = detail
+        #: Server-minted id for the call, from ``X-Comfy-Request-Id``. ``None``
+        #: only when the response carried no such header.
+        self.request_id = request_id
+        #: Seconds the server asked the caller to wait, from ``Retry-After``,
+        #: or ``None`` when it named no pace. Named identically to
+        #: ``comfy_low.ApiError.retry_after`` on purpose: the retry policy
+        #: reads it off either with one ``getattr``, so a router error and a
+        #: protocol one are paced the same way.
+        self.retry_after = retry_after
+        #: Per-field validation failures, populated whenever the response
+        #: carried the ``detail`` *array* -- see :class:`ValidationErrorDetail`.
+        #: Empty for every failure that names no field. It lives on the base
+        #: rather than on one subclass because the bucket a per-field failure
+        #: carries is read off the header, so the entries have to survive
+        #: whichever bucket that turns out to be.
+        self.errors: tuple[ValidationErrorDetail, ...] = tuple(errors)
+
+
+# Each class below carries two lines of contract under its docstring:
+# `error_type`, the wire value it maps to, and `_spec_meaning_digest`, the
+# `_meaning_digest` of the spec `meaning` that docstring was written against.
+# The digest sits next to the docstring it blesses because re-blessing it is
+# the act of re-reading that docstring against the new prose. It is deliberately
+# absent from `RouterError` itself: a subclass that forgets it must fail the
+# check via `getattr(cls, "_spec_meaning_digest", None)` rather than inherit a
+# value that blesses prose nobody read.
+
+
+# -- request-level buckets ---------------------------------------------------
+
+
+class InvalidInput(RouterError):
+    """The request was rejected before it reached the model.
+
+    A malformed body, a malformed or expired pagination cursor, an input the
+    model's own schema does not accept — or, on a ``409``, an
+    ``Idempotency-Key`` that cannot serve this request: already used for a
+    different request, or already consumed by a call whose response cannot be
+    replayed. The key cases are answered by using a NEW key rather than by
+    editing the request; the status says which case you are in.
+    """
+
+    error_type = "invalid_input"
+    _spec_meaning_digest: str = "fd6c671bd2b3"
+
+
+class ContentPolicyViolation(RouterError):
+    """The model's content policy refused the request.
+
+    Deterministic: the same input will be refused again, so this is never a
+    retry candidate. It is deliberately not a :class:`ProviderError` -- the two
+    differ in whether a retry can ever succeed.
+    """
+
+    error_type = "content_policy_violation"
+    _spec_meaning_digest: str = "bf2e91e6a6dd"
+
+
+class ProviderError(RouterError):
+    """The upstream model provider returned an error."""
+
+    error_type = "provider_error"
+    _spec_meaning_digest: str = "1a23c8c324dd"
+
+
+class ProviderTimeout(RouterError):
+    """The upstream model provider did not respond in time.
+
+    An upstream running out of time, not our own deadline -- the two are
+    separate buckets because they are separate causes.
+    """
+
+    error_type = "provider_timeout"
+    _spec_meaning_digest: str = "1e54e0cf49b1"
+
+
+class InsufficientCredits(RouterError):
+    """The account does not have enough credits to run this model."""
+
+    error_type = "insufficient_credits"
+    _spec_meaning_digest: str = "303c7b5e1b47"
+
+
+class ModelNotFound(RouterError):
+    """No such model. An unknown provider, an unenrolled id, an id the catalog
+    has retired past its sunset date, and a catalogued id the provider does not
+    currently serve for Comfy all land here: each is "that id runs nothing".
+
+    For a retired id, ``detail`` reads ``<id> was retired on <YYYY-MM-DD>; use
+    <successor>`` when a successor is recorded and visible to the caller, or
+    just ``<id> was retired on <YYYY-MM-DD>`` when it is not. A named successor
+    is always a live catalog id the call can be re-pointed at. A model whose
+    sunset is still in the future is not retired: it stays listed and runnable
+    until that date. Otherwise ``detail`` carries up to three suggestions drawn
+    from the models the caller is entitled to see, except for a catalogued id
+    the provider does not currently serve, whose response carries none.
+    ``detail`` is display text, not a parse target.
+    """
+
+    error_type = "model_not_found"
+    _spec_meaning_digest: str = "6c0e0e327e4d"
+
+
+# -- transport-level buckets -------------------------------------------------
+
+
+class Unauthorized(RouterError):
+    """Authentication is required, or the key presented was not accepted."""
+
+    error_type = "unauthorized"
+    _spec_meaning_digest: str = "b6e0bf263c47"
+
+
+class Forbidden(RouterError):
+    """The caller is authenticated but has no access to this model."""
+
+    error_type = "forbidden"
+    _spec_meaning_digest: str = "e96ef9663ad4"
+
+
+class ConcurrencyLimitExceeded(RouterError):
+    """The workspace already has as many calls in flight as it is allowed.
+
+    On a ``429``: plain workspace throttling — retry once one of your own calls
+    finishes. On a ``409`` on the run route it means something more specific:
+    another call is ALREADY in flight for the ``Idempotency-Key`` this request
+    presented. Re-send the SAME key after ``retry_after`` seconds to collect
+    that call's result; :mod:`comfy_sdk.retry` does exactly that by default.
+    """
+
+    error_type = "concurrency_limit_exceeded"
+    _spec_meaning_digest: str = "72809ca14576"
+
+
+class ClientDisconnected(RouterError):
+    """The client closed the connection before the request completed."""
+
+    error_type = "client_disconnected"
+    _spec_meaning_digest: str = "51b8d3227903"
+
+
+class InternalError(RouterError):
+    """An internal error occurred.
+
+    It is also the value a client should treat any *unrecognised* bucket as, so
+    a later addition to the set does not break a client generated before it.
+    """
+
+    error_type = "internal_error"
+    _spec_meaning_digest: str = "81abec502482"
+
+
+class DeadlineExceeded(RouterError):
+    """Comfy stopped holding the connection at its own configured bound before
+    an answer arrived.
+
+    It shares ``504`` with :class:`ProviderTimeout` and the pair says which side
+    ran out of time; this one is Comfy's own bound, so nothing about the request
+    was rejected and the same request may be retried. It says nothing about the
+    charge: a provider generation that completed is billed regardless of whether
+    the caller received the response. Retry it with the *same*
+    ``Idempotency-Key`` -- when the provider had already accepted the
+    generation, the retry collects that generation rather than dispatching
+    another, and a ``Retry-After`` on the ``504`` says when to ask.
+
+    That is the *contract's* advice, and unlike :class:`ServiceUnavailable` the
+    SDK **does** follow it by default -- this is the one bucket a contract says
+    the same key survives, so ``client.models.run`` makes the retry rather than
+    describing it. :func:`comfy_sdk.retry.is_collectable` is the gate and it
+    keys on this bucket, never on the status alone: a ``504`` reaching the SDK
+    without a bucket header is read as :class:`ProviderTimeout`, where a
+    same-key retry is *not* blessed. It also requires the ``Retry-After``, which
+    the router sends only when it holds a handle to a generation still running
+    -- without one there is nothing to collect, so a bare
+    ``deadline_exceeded`` ``504`` is raised to the caller like any other 5xx.
+    The pace is honoured as given: ``error_from_response`` preserves the header
+    on the exception, and
+    :meth:`~comfy_sdk.retry.Retrier.delay_before_retry` prefers a named pace
+    over its own jittered backoff. ``RetryPolicy(retry_collectable=False)``
+    switches the behaviour off; ``Comfy(retry=NO_RETRY)`` switches off retrying
+    entirely.
+    """
+
+    error_type = "deadline_exceeded"
+    _spec_meaning_digest: str = "837b53325ddd"
+
+
+class NotEnabled(RouterError):
+    """Comfy Router is not switched on for this caller yet.
+
+    Nothing about the request is wrong and the model exists, which is why this
+    is not :class:`ModelNotFound`; it shares ``403`` with :class:`Forbidden` and
+    is *not* the same thing, because ``forbidden`` is an entitlement decision
+    about the caller while this is a state of the rollout. It is **terminal**:
+    do not retry, and do not treat it as an outage.
+
+    The one exception to "about the caller" is the queued submit
+    (:meth:`~comfy_sdk.models.Models.submit`), which also answers
+    ``not_enabled`` for a *model* whose partner answers a generation directly
+    as bytes: that model cannot yet be queued, so it is the model and not the
+    caller that is refused, nothing is queued or charged, and the synchronous
+    route (:meth:`~comfy_sdk.models.Models.run`) runs it instead. On a submit,
+    read ``detail`` before concluding the account is not switched on.
+    """
+
+    error_type = "not_enabled"
+    _spec_meaning_digest: str = "571a30cc6ba0"
+
+
+class ServiceUnavailable(RouterError):
+    """A service Comfy Router depends on is temporarily unavailable and the
+    caller did nothing wrong.
+
+    Retry it with backoff: it is the one bucket here whose condition clears on
+    its own, without the caller changing the request and without a concurrency
+    slot freeing, which is what distinguishes it from the other retryable
+    answers (:class:`ConcurrencyLimitExceeded`, :class:`DeadlineExceeded`). It
+    is separate from :class:`InternalError` -- which is a ``500`` and means
+    Router itself failed -- so a client can tell "come back shortly" from "this
+    call is not going to work".
+
+    On whether the SDK makes that retry for you: it does **not** by default, and
+    :mod:`comfy_sdk.retry` says why -- the bucket arrives on a ``503``, whose
+    effect on the ``Idempotency-Key`` the caller cannot observe from the status
+    alone (the contract releases an undispatched refusal but keeps a cut-off
+    dispatch holding the generation), and the default policy retries only
+    failures whose outcome the one key provably characterises.
+    ``RetryPolicy(retry_possibly_in_flight=True)`` opts in, and is the route to
+    take: it keeps the one key across the retry, which is answered from the
+    record -- re-run, collected, or refused ``409 invalid_input``.
+
+    Catching this class and calling ``models.run()`` again is **not** an
+    equivalent way to do it. A run mints a *fresh* ``Idempotency-Key`` per call,
+    so a bare re-run after a ``503`` presents a new key for a generation the
+    server may already have started, and the two can both be billed. A
+    hand-written retry has to pass the *same* explicit ``idempotency_key=`` both
+    times, and is only useful against a deployment documented to replay a
+    repeated key rather than reject it ``422``.
+    """
+
+    error_type = "service_unavailable"
+    _spec_meaning_digest: str = "28b40d6c0f89"
+
+
+class RateLimited(RouterError):
+    """The caller has spent an allowance measured over a *window* and must wait
+    for that window to roll.
+
+    It shares ``429`` with :class:`ConcurrencyLimitExceeded` and is not the same
+    thing: that one clears the moment one of the caller's own in-flight calls
+    finishes, so retrying in seconds is right, whereas nothing the caller does
+    drains this one early. ``detail`` names the window.
+    """
+
+    error_type = "rate_limited"
+    _spec_meaning_digest: str = "b4ae727df04d"
+
+
+# -- queue buckets -----------------------------------------------------------
+
+
+class Cancelled(RouterError):
+    """A queued request was withdrawn before it produced a result.
+
+    Reached through the cancel route or by an operator, and **terminal**. It is
+    not by itself a statement about the charge: a request cancelled while still
+    ``IN_QUEUE`` was never dispatched and cannot be charged, while one cancelled
+    after it was admitted may still be -- a partner generation that completes is
+    charged whether or not anyone collected it, which is why the cancel route
+    calls the ask a request, not a guarantee. It is not
+    :class:`ClientDisconnected`: that says nobody is listening any more while a
+    generation may still be running and billable, this says the request itself
+    was withdrawn. The status read answers ``200`` with this in the body (the
+    request ended, so the read succeeded); collecting the result answers ``409``
+    -- the read worked and found a request whose terminal state, the caller's
+    own decision, leaves nothing to return. Deliberately not ``410`` (which on
+    that route means the result aged out of retention) and not a ``5xx`` (which
+    would report the caller's own cancellation as a Router fault worth retrying).
+    """
+
+    error_type = "cancelled"
+    _spec_meaning_digest: str = "bfe02dc8551c"
+
+
+class QueueTimeout(RouterError):
+    """A queued request waited past its queue timeout without being admitted.
+
+    **Terminal, unbilled, and it never took a concurrency slot** -- the job
+    never reached a provider. Deliberately not :class:`DeadlineExceeded`, which
+    is the synchronous route's connection bound and may leave a generation
+    running and billable; this one provably never started. It is returned under
+    ``504``, shared with :class:`ProviderTimeout` and :class:`DeadlineExceeded`
+    because a status can only say a clock ran out -- which clock (the partner's,
+    Comfy's connection bound, or the queue's admission bound) is what
+    ``error_type`` carries. The request is terminal: submit a new one rather
+    than re-reading this one.
+    """
+
+    error_type = "queue_timeout"
+    _spec_meaning_digest: str = "82e468ef3539"
+
+
+class RequestNotFound(RouterError):
+    """The ``request_id`` names no request of the caller's under this model.
+
+    The second of the two conditions the queued reads' ``404`` covers; the
+    first is the ``{provider}/{model}`` id resolving to no partner model, which
+    is :class:`ModelNotFound` and carries fuzzy suggestions. It also covers the
+    right-id / wrong-model URL the path shape refuses, and it is deliberately
+    indistinguishable from a request in another workspace, so a probe with a
+    guessed id learns nothing. A request that merely aged out of its retention
+    window is ``410``, not this.
+    """
+
+    error_type = "request_not_found"
+    _spec_meaning_digest: str = "385112b3cdcf"
+
+
+class QueueBacklogFull(RouterError):
+    """The caller already has too many queued requests waiting to run, so this
+    submit was refused.
+
+    It shares ``429`` with :class:`ConcurrencyLimitExceeded` and is not the same
+    thing: that one is the synchronous route's answer for too many calls in
+    flight at once, whereas the queue accepts a submit at that limit and parks
+    it, and this bucket is the separate bound on how many a caller may leave
+    waiting -- so that parking cannot mean enqueuing without end. It clears as
+    the caller's own queued requests finish, so retry once some of them
+    complete.
+    """
+
+    error_type = "queue_backlog_full"
+    _spec_meaning_digest: str = "50745ff63044"
+
+
+# -- cancel refusals ---------------------------------------------------------
+#
+# Deliberately OUTSIDE the closed set below, and carrying no
+# `_spec_meaning_digest`: the contract's `x-comfy-error-types` does not name
+# them, because this is not a bucket the run route reports. It is what the
+# CANCEL route answers with when it declines -- a `409` whose body states a
+# `status` and names no bucket at all. The classes exist anyway, for the reason
+# the typed hierarchy exists at all: without them the only way to tell a cancel
+# that arrived too late from any other `409` is to substring-match the response
+# body, and a second refusal shape would mean a second substring match.
+#
+# They are `RouterError` subclasses because they come off a Router route, so
+# `except RouterError` around a cancel catches them like every other refusal.
+
+
+class CancelRefused(RouterError):
+    """The server declined to cancel a submitted request.
+
+    The base for the cancel route's refusals, so a caller who only wants "the
+    cancel did not take" writes one ``except`` clause and does not have to
+    enumerate the reasons.
+
+    Nothing raises this class itself, and that is not an oversight to be fixed
+    by a fallback: unlike an unknown *bucket*, which :class:`RouterError`
+    catches because the response still named a bucket, a refusal shape this SDK
+    does not recognise carries nothing that identifies it as a refusal at all --
+    it is a ``409`` naming no bucket and no code, indistinguishable from any
+    other. Such a response stays an untyped ``ComfyError``, which is the honest
+    answer; typing it would be guessing. Teaching the SDK a new refusal is one
+    entry in :data:`comfy_low.errors._CODE_BY_CANCEL_STATUS` plus one subclass
+    here.
+
+    A refusal is not necessarily a problem: cancelling is a request, not a
+    guarantee, and the authoritative state is whatever
+    :meth:`comfy_sdk.model_requests.RequestHandle.status` says next.
+    """
+
+    error_type = "cancel_refused"
+
+
+class AlreadyCompleted(CancelRefused):
+    """The request had already finished when the cancel reached the server.
+
+    The ``409`` answer to cancelling a request whose work is done -- body
+    ``{"status": "ALREADY_COMPLETED"}``. Terminal and benign: there was
+    nothing left to stop, the result is still collectable with
+    :meth:`comfy_sdk.model_requests.RequestHandle.get`, and re-sending the
+    cancel will be refused the same way.
+
+    ``error_type`` is ``already_completed`` -- the snake_case of the body's
+    ``status``, not a value read off ``X-Comfy-Error-Type``, which this
+    response does not send.
+    """
+
+    error_type = "already_completed"
+
+
+#: Cancel-refusal classes, keyed by the ``error_type`` :mod:`comfy_low.errors`
+#: derives for them. Not folded into :data:`_BY_ERROR_TYPE`, which is the
+#: contract's closed set and is asserted against the vendored spec.
+CANCEL_REFUSALS: tuple[type[CancelRefused], ...] = (AlreadyCompleted,)
+
+_BY_CANCEL_REFUSAL: dict[str, type[CancelRefused]] = {
+    cls.error_type: cls for cls in CANCEL_REFUSALS
+}
+
+
+#: Every class in the closed set, in the order the error set declares it: the
+#: request-level buckets, then the transport-level ones. The order is the
+#: vendored spec's ``x-comfy-error-types`` order, and
+#: ``tests/test_router_spec_contract.py`` asserts that -- so this tuple cannot
+#: drift from the contract two SDKs generate their surface from.
+ROUTER_EXCEPTIONS: tuple[type[RouterError], ...] = (
+    InvalidInput,
+    ContentPolicyViolation,
+    ProviderError,
+    ProviderTimeout,
+    InsufficientCredits,
+    ModelNotFound,
+    Unauthorized,
+    Forbidden,
+    ConcurrencyLimitExceeded,
+    ClientDisconnected,
+    InternalError,
+    DeadlineExceeded,
+    NotEnabled,
+    ServiceUnavailable,
+    RateLimited,
+    Cancelled,
+    QueueTimeout,
+    RequestNotFound,
+    QueueBacklogFull,
+)
+
+_BY_ERROR_TYPE: dict[str, type[RouterError]] = {cls.error_type: cls for cls in ROUTER_EXCEPTIONS}
+
+#: The closed ``error_type`` set this SDK version knows, in declaration order.
+#: Anything outside it raises :class:`RouterError` itself.
+ROUTER_ERROR_TYPES: tuple[str, ...] = tuple(_BY_ERROR_TYPE)
+
+# Status -> bucket, used ONLY when a response carries no bucket at all: a proxy,
+# gateway or load balancer that rejects a call before it reaches the router
+# answers with a status and no `X-Comfy-Error-Type`, and `except Unauthorized`
+# should still fire for a rejected key.
+#
+# Read it as "what does an INTERMEDIARY's answer most likely mean", not "which
+# bucket owns this status". Nothing here is ever consulted for a response the
+# router itself sent, because the router repeats the bucket on the header on
+# every error it sends -- so each entry is the plain HTTP reading of the status,
+# and the bucket named is whichever of ours matches that reading.
+#
+# The widened error set gave `403`, `429` and `504` a second router bucket each
+# (`not_enabled`, `rate_limited`, `deadline_exceeded`). The mappings are
+# unchanged anyway, deliberately: `forbidden`, `concurrency_limit_exceeded` and
+# `provider_timeout` are the ones that restate the plain HTTP meaning of a
+# rejected credential, a throttled caller and an upstream that did not answer,
+# while the three new buckets are Comfy-specific claims about the router's own
+# rollout, allowance windows and connection bound -- claims a proxy that never
+# reached the router is not in a position to be making. (For `429` the choice is
+# the narrowest one: both candidates are throttling, and `RetryPolicy` keys on
+# the status and the `Retry-After` this module now preserves rather than on the
+# bucket, so the class a caller catches is the only thing that differs.)
+#
+# A status stays OUT of the table when the plain HTTP reading does not pick one
+# bucket. `400` is absent because it carries either `invalid_input` or
+# `content_policy_violation`, and those differ in whether a retry can ever
+# succeed -- guessing between them would tell a caller to retry a deterministic
+# refusal. `422` is absent because the contract pins no bucket to it at all.
+# `503` is absent because an intermediary's bare `503` is not the router's
+# `service_unavailable`: that bucket is the router's own statement that a
+# dependency of ITS is briefly down and the condition clears on its own, and a
+# gateway's `503` says nothing about whether the request ever reached the router
+# to have such a statement made about it. All three fall through to
+# `RouterError`, which is the honest answer.
+_ERROR_TYPE_BY_STATUS: dict[int, str] = {
+    401: "unauthorized",
+    402: "insufficient_credits",
+    403: "forbidden",
+    404: "model_not_found",
+    429: "concurrency_limit_exceeded",
+    499: "client_disconnected",
+    502: "provider_error",
+    504: "provider_timeout",
+}
+
+
+def exception_for(error_type: str | None) -> type[RouterError]:
+    """The exception class for a wire ``error_type``.
+
+    Returns :class:`RouterError` for a value this SDK version does not know,
+    which is the forward-compatible answer: the caller still catches it and can
+    read the raw value off ``.error_type``.
+    """
+    if error_type is None:
+        return RouterError
+    return _BY_ERROR_TYPE.get(error_type, RouterError)
+
+
+def error_from_response(
+    http_status: int,
+    headers: Mapping[str, str] | None = None,
+    body: Any = None,
+) -> RouterError:
+    """Build the typed exception for a router error response.
+
+    ``body`` is the decoded JSON body, or ``None`` when there wasn't one (an
+    HTML error page from an intermediary, an empty 502). The bucket is read from
+    ``X-Comfy-Error-Type`` first and from the body's ``error_type`` second,
+    because the per-field validation body carries no ``error_type`` of its own.
+
+    This never raises. A malformed or unrecognised body degrades to the most
+    specific exception the response still supports -- worst case a bare
+    :class:`RouterError` -- because a client that blew up decoding an error
+    response would replace a diagnosable failure with an undiagnosable one.
+    """
+    lowered = _lowercase_headers(headers)
+    # Bounded and filtered rather than merely stripped: the id is displayed
+    # and pasted into support tickets, and this header is server-controlled.
+    # Shared with `comfy_low.transport` so both surfaces clean it identically.
+    request_id = clean_request_id(lowered.get(REQUEST_ID_HEADER.lower()))
+    error_type = _clean(lowered.get(ERROR_TYPE_HEADER.lower()))
+    retry_after = _retry_after(lowered.get(RETRY_AFTER_HEADER.lower()))
+
+    detail: str | None = None
+    errors: tuple[ValidationErrorDetail, ...] = ()
+    if isinstance(body, Mapping):
+        raw_detail = body.get("detail")
+        if isinstance(raw_detail, str):
+            # Reduced by the same function the array summary and every body
+            # excerpt go through, so one wire body's human-readable text is
+            # bounded, single-line and printable whichever shape carried it.
+            # This is where the string form used to reach `str(exc)` verbatim.
+            # A whitespace-only `detail` now reads as absent and falls to the
+            # status fallback below, matching `comfy_low.error_from_envelope`.
+            detail = clean_body_excerpt(raw_detail)
+        elif isinstance(raw_detail, Sequence) and not isinstance(raw_detail, (str, bytes)):
+            errors = tuple(
+                _detail_from(entry) for entry in raw_detail if isinstance(entry, Mapping)
+            )
+            # The same summariser the awaited `models.run` path uses, so one wire
+            # body produces one `.detail` whichever surface built the exception.
+            detail = summarise_detail(raw_detail)
+        if error_type is None:
+            error_type = _clean(body.get("error_type"))
+
+    if error_type is None:
+        error_type = _ERROR_TYPE_BY_STATUS.get(http_status)
+
+    if detail is None:
+        detail = f"HTTP {http_status}"
+
+    return exception_for(error_type)(
+        detail,
+        error_type=error_type,
+        http_status=http_status,
+        request_id=request_id,
+        retry_after=retry_after,
+        errors=errors,
+    )
+
+
+def error_from_completion(
+    payload: Any,
+    *,
+    request_id: str | None = None,
+    retry_after: int | None = None,
+) -> RouterError | None:
+    """The typed exception a *completed* queued request reports, or ``None``.
+
+    The queue expresses a failure and a cancellation the same way it expresses
+    a success: the request reaches ``COMPLETED``, and the failure rides in the
+    body as an ``error_type``. There is no error *status* to read — the poll
+    that discovered it was a ``200`` — so a client that only mapped HTTP status
+    codes would hand a caller a failed generation as a successful result.
+
+    Returns ``None`` when the payload names no ``error_type``, which is the
+    ordinary success path; every caller has to treat that as "no error found"
+    rather than as "no error possible".
+
+    ``http_status`` is left unset on what this builds, deliberately: there was
+    no failing status. That also keeps :mod:`comfy_sdk.retry` out of it — a
+    completion carrying an ``error_type`` is the server's final answer about a
+    request that already ran, not a transport condition another attempt could
+    survive.
+
+    Like :func:`error_from_response`, this never raises: a malformed body
+    degrades to the least specific exception the payload still supports.
+    """
+    if not isinstance(payload, Mapping):
+        return None
+    error_type = _clean(payload.get("error_type"))
+    if error_type is None:
+        return None
+
+    errors: tuple[ValidationErrorDetail, ...] = ()
+    detail: str | None = None
+    raw_detail = payload.get("detail")
+    if isinstance(raw_detail, str):
+        # Bounded and made printable like the response path's string form (see
+        # `error_from_response`): a completion body is as server-controlled as
+        # a response body, and its `detail` lands in the same displayed place.
+        detail = clean_body_excerpt(raw_detail)
+    elif isinstance(raw_detail, Sequence) and not isinstance(raw_detail, (str, bytes)):
+        errors = tuple(_detail_from(entry) for entry in raw_detail if isinstance(entry, Mapping))
+        # One summariser across both surfaces (see `error_from_response`), so the
+        # queued path's `.detail` matches the awaited one for the same body.
+        detail = summarise_detail(raw_detail)
+
+    if detail is None:
+        detail = f"the request completed with error_type {error_type!r}"
+
+    return exception_for(error_type)(
+        detail,
+        error_type=error_type,
+        # Filtered, not merely stripped, and by the same function
+        # `error_from_response` uses: a completion's id is just as
+        # server-controlled as a header's, and it lands in the same displayed,
+        # pasted-into-a-support-ticket place.
+        request_id=clean_request_id(request_id),
+        retry_after=retry_after,
+        errors=errors,
+    )
+
+
+def _lowercase_headers(headers: Mapping[str, str] | None) -> dict[str, str]:
+    """Header names are case-insensitive on the wire; normalise so a plain dict
+    works as well as an ``httpx.Headers``."""
+    if not headers:
+        return {}
+    return {str(name).lower(): value for name, value in headers.items()}
+
+
+def _retry_after(value: Any) -> int | None:
+    """``Retry-After`` as whole seconds, or ``None`` when it named no usable pace.
+
+    Delta-seconds only, matching ``comfy_low.transport._retry_after`` so one
+    header has one reading across the SDK: the HTTP-date form the RFC also
+    permits is treated as absent rather than parsed here, since guessing at a
+    clock skew is worse than falling back to the local backoff schedule. A
+    negative value is absent too -- it would otherwise reach the retry
+    arithmetic as a delay to be waited.
+    """
+    if not isinstance(value, str):
+        return None
+    try:
+        seconds = int(value.strip())
+    except ValueError:
+        return None
+    return seconds if seconds >= 0 else None
+
+
+def _clean(value: Any) -> str | None:
+    """A header or body field as a non-empty string, or ``None``."""
+    if not isinstance(value, str):
+        return None
+    stripped = value.strip()
+    return stripped or None
+
+
+def _detail_from(entry: Mapping[str, Any]) -> ValidationErrorDetail:
+    """One ``detail[]`` entry, tolerating a missing or wrongly-typed field.
+
+    Every field is optional here even though the contract makes ``loc``, ``msg``
+    and ``type`` required: this runs while handling a failure, and dropping the
+    two fields that did arrive because a third was malformed helps nobody.
+    """
+    raw_loc = entry.get("loc")
+    loc: tuple[str | int, ...] = ()
+    if isinstance(raw_loc, Sequence) and not isinstance(raw_loc, (str, bytes)):
+        # A member that is not a path segment is DROPPED, not stringified. The
+        # field is typed as a path -- a field name or an array index -- and
+        # `str(part)` on a server-controlled nested value put a Python repr in
+        # there instead (`('body', "['a', 'b']")`), which then reached the user
+        # through `.location`. `bool` is excluded despite being an `int`: `True`
+        # is neither a field name nor an index.
+        loc = tuple(
+            part
+            for part in raw_loc
+            if isinstance(part, str) or (isinstance(part, int) and not isinstance(part, bool))
+        )
+
+    msg, reason, ctx = entry.get("msg"), entry.get("type"), entry.get("ctx")
+    return ValidationErrorDetail(
+        loc=loc,
+        msg=msg if isinstance(msg, str) else "",
+        type=reason if isinstance(reason, str) else "",
+        ctx=ctx if isinstance(ctx, Mapping) else None,
+        input=entry.get("input"),
+    )
+
+
+__all__ = [
+    "CANCEL_REFUSALS",
+    "ERROR_TYPE_HEADER",
+    "REQUEST_ID_HEADER",
+    "RETRY_AFTER_HEADER",
+    "ROUTER_ERROR_TYPES",
+    "ROUTER_EXCEPTIONS",
+    "AlreadyCompleted",
+    "CancelRefused",
+    "Cancelled",
+    "ClientDisconnected",
+    "ComfyError",
+    "ConcurrencyLimitExceeded",
+    "ContentPolicyViolation",
+    "DeadlineExceeded",
+    "Forbidden",
+    "InsufficientCredits",
+    "InternalError",
+    "InvalidInput",
+    "ModelNotFound",
+    "NotEnabled",
+    "ProviderError",
+    "ProviderTimeout",
+    "QueueBacklogFull",
+    "QueueTimeout",
+    "RateLimited",
+    "RequestNotFound",
+    "RouterError",
+    "ServiceUnavailable",
+    "Unauthorized",
+    "ValidationErrorDetail",
+    "error_from_completion",
+    "error_from_response",
+    "exception_for",
+]
