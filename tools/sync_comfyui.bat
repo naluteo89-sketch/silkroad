@@ -6,5 +6,7 @@ set DEST=%ROOT%\unity\Assets\StreamingAssets\ComfyUI
 if not exist "%DEST%" mkdir "%DEST%"
 copy /Y "%ROOT%\comfyui\workflows\drawing_to_silkroad.api.json" "%DEST%\" >nul
 copy /Y "%ROOT%\comfyui\presets\silkroad_style.json" "%DEST%\" >nul
+copy /Y "%ROOT%\comfyui\workflows\drawing_to_silkroad_flux2klein.api.json" "%DEST%\" >nul
+copy /Y "%ROOT%\comfyui\presets\silkroad_flux2klein.json" "%DEST%\" >nul
 echo 복사 완료: %DEST%
 pause

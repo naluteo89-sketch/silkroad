@@ -21,7 +21,8 @@ namespace Silkroad
     public class GenerationInfo
     {
         public string promptId;
-        public int seed;
+        public long seed;
+        public string theme;
         public string preset;
         public string workflow;
     }
@@ -78,7 +79,7 @@ namespace Silkroad
         [Tooltip("StreamingAssets 기준 경로. 파일이 없으면 아래 Fallback Preset 사용")]
         public string presetPath = "ComfyUI/silkroad_style.json";
         [Tooltip("결과를 가져올 SaveImage 노드 ID (comfyui/node-mapping.json 의 output.node)")]
-        public string outputNodeId = "12";
+        public string outputNodeId = "9";
 
         [Header("프리셋 파일이 없을 때 쓰는 기본값")]
         public GenerationPreset fallbackPreset = new GenerationPreset();
@@ -92,11 +93,28 @@ namespace Silkroad
         const string PrefUrl = "comfy_url";
         const string PrefDummy = "comfy_dummy";
 
+        /// <summary>
+        /// 앱 안 Comfy 설정 화면(테스트용) 사용 여부: 에디터 또는 Development Build 에서만.
+        /// 정식 빌드에서는 설정 버튼이 사라지고, 기기에 저장된 테스트 값도 무시 → Inspector 값만 사용.
+        /// </summary>
+        public static bool TestSettingsEnabled => Application.isEditor || Debug.isDebugBuild;
+
         void Awake()
         {
-            // 태블릿 설정 화면에서 저장한 값이 있으면 우선 사용
-            if (PlayerPrefs.HasKey(PrefUrl)) serverUrl = PlayerPrefs.GetString(PrefUrl);
-            if (PlayerPrefs.HasKey(PrefDummy)) useDummy = PlayerPrefs.GetInt(PrefDummy) == 1;
+            // 앱 안 설정 화면은 없앰 → Inspector 값만 사용. 예전에 기기/에디터에 저장된 테스트 값은 지움.
+            if (PlayerPrefs.HasKey(PrefUrl) || PlayerPrefs.HasKey(PrefDummy))
+            {
+                PlayerPrefs.DeleteKey(PrefUrl);
+                PlayerPrefs.DeleteKey(PrefDummy);
+                PlayerPrefs.Save();
+            }
+            // 설정 창이 처음부터 꺼져 있어도 메인 화면의 '설정' 버튼은 숨김
+            var sv = FindAnyObjectByType<SettingsView>(FindObjectsInactive.Include);
+            if (sv != null)
+            {
+                if (sv.openButton) sv.openButton.gameObject.SetActive(false);
+                sv.gameObject.SetActive(false);
+            }
         }
 
         /// <summary>설정 화면에서 호출. 기기에 저장되어 다음 실행에도 유지.</summary>
@@ -140,8 +158,13 @@ namespace Silkroad
         /// 생성 요청. onStatus 로 "업로드 중 / 대기 중 / 생성 중 / 결과 받는 중" 단계를 알려줍니다.
         /// </summary>
         public void Generate(byte[] png, Action<string> onStatus, Action<Texture2D, GenerationInfo> onDone, Action<string> onError)
+            => Generate(png, 0, onStatus, onDone, onError);
+
+        /// <param name="variation">같은 원본의 재요청 횟수 (새 그림 = 0). 프리셋 seed 에 더해짐.</param>
+        public void Generate(byte[] png, int variation, Action<string> onStatus, Action<Texture2D, GenerationInfo> onDone, Action<string> onError)
         {
             Cancel();
+            _variation = variation;
             _running = StartCoroutine(useDummy ? DummyRoutine(png, onStatus, onDone)
                 : IsCloud() ? CloudRoutine(png, onStatus, onDone, onError)
                 : RealRoutine(png, onStatus, onDone, onError));
@@ -159,6 +182,27 @@ namespace Silkroad
         }
 
         UnityWebRequest _activeRequest;
+        int _variation;
+        int _lastTheme = -1;
+
+        /// <summary>새 그림(variation 0) = 기본 테마(빈칸) / 재요청 = 테마 중 랜덤 1개 (직전과 다르게).</summary>
+        string PickTheme(GenerationPreset p, out string name)
+        {
+            name = "기본";
+            if (_variation <= 0 || p == null || p.themes == null) return "";
+            var pool = new System.Collections.Generic.List<int>();
+            for (int i = 0; i < p.themes.Length; i++)
+                if (p.themes[i] != null && !string.IsNullOrWhiteSpace(p.themes[i].prompt)) pool.Add(i);
+            if (pool.Count == 0) return "";
+            if (pool.Count > 1) pool.Remove(_lastTheme);
+            int pick = pool[UnityEngine.Random.Range(0, pool.Count)];
+            _lastTheme = pick;
+            name = string.IsNullOrEmpty(p.themes[pick].name) ? "테마" + (pick + 1) : p.themes[pick].name;
+            return p.themes[pick].prompt;
+        }
+
+        /// <summary>프리셋 seed 가 있으면 seed + 재요청 횟수, 없으면 랜덤.</summary>
+        long PickSeed(GenerationPreset p) => p != null && p.seed > 0 ? p.seed + _variation : UnityEngine.Random.Range(1, int.MaxValue);
 
         // ───────────── 더미 모드 ─────────────
         IEnumerator DummyRoutine(byte[] png, Action<string> onStatus, Action<Texture2D, GenerationInfo> onDone)
@@ -236,10 +280,12 @@ namespace Silkroad
                 catch (Exception e) { Debug.LogWarning("[ComfyUI] 프리셋 파싱 실패, 기본값 사용: " + e.Message); }
             }
 
-            string wf = preset.Apply(wfText, Escape)
+            string themeText = PickTheme(preset, out info.theme);
+            string wf = preset.Apply(wfText, Escape, themeText)
                 .Replace("{{INPUT_IMAGE}}", Escape(uploadedName))
-                .Replace("{{SEED}}", (info.seed = UnityEngine.Random.Range(1, int.MaxValue)).ToString());
+                .Replace("{{SEED}}", (info.seed = PickSeed(preset)).ToString());
             info.preset = preset.name;
+            string outNode = preset.OutputNodeOr(outputNodeId); // 프리셋 값 우선 (Flux2 = "9")
 
             var sb = new StringBuilder();
             sb.Append("{\"prompt\":").Append(wf);
@@ -286,7 +332,7 @@ namespace Silkroad
                     { Fail(onError, "ComfyUI 실행 오류:\n" + Shorten(txt)); yield break; }
                     // 지정한 출력 노드의 결과만 사용 (최근 이미지 추측 금지)
                     int outIdx = txt.IndexOf("\"outputs\"", StringComparison.Ordinal);
-                    int nodeIdx = outIdx < 0 ? -1 : txt.IndexOf("\"" + outputNodeId + "\"", outIdx, StringComparison.Ordinal);
+                    int nodeIdx = outIdx < 0 ? -1 : txt.IndexOf("\"" + outNode + "\"", outIdx, StringComparison.Ordinal);
                     if (nodeIdx >= 0)
                     {
                         var m = Regex.Match(txt.Substring(nodeIdx),

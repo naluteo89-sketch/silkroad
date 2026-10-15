@@ -1,0 +1,12 @@
+{
+  "name": "cmp_K_flux2klein",
+  "positive": "Repaint this sketch as a traditional Persian miniature painting, using the sketch's outlines as the underdrawing. Every shape keeps the position, size and silhouette of its outline in the sketch. Paint color, pattern and detail inside those outlines, then finish by refining the outlines into smooth, thin, brush-painted contour lines in a darker shade of each area's color, like the clean edges of a finished miniature.\n\nKeep every person and animal in the place and pose shown in the sketch, with the correct number of arms and legs. Keep the colors the sketch uses for each area. Redraw the crude shapes as a fully finished painting.\n\nTraditional Persian miniature style: elaborate patterns on textiles, flat perspective, stylized natural elements, opaque gouache with gold accents on aged paper. Warm, vibrant palette dominated by reds, golds, earthy tones and blues. Soft, diffused natural light with gentle shadows.\n\nHorizontal composition matching the sketch. Output one single painting with no frame, border, scroll or text.",
+  "negative": "",
+  "steps": 30,
+  "cfg": 5.0,
+  "seed": 790848006145158,
+  "denoise": 1.0,
+  "controlStrength": 0.0,
+  "outputNode": "9",
+  "_note": "silkroad_flux2klein.json 프롬프트 (steps 30 으로 통일)"
+}

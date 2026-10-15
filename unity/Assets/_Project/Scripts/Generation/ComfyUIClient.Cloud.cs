@@ -68,8 +68,10 @@ namespace Silkroad
                 catch (Exception e) { Debug.LogWarning("[ComfyCloud] 프리셋 파싱 실패, 기본값 사용: " + e.Message); }
             }
             info.preset = preset.name;
-            info.seed = UnityEngine.Random.Range(1, int.MaxValue);
-            string wf = preset.Apply(wfText, Escape)
+            string outNode = preset.OutputNodeOr(outputNodeId); // 프리셋 값 우선 (Flux2 = "9")
+            info.seed = PickSeed(preset);
+            string themeText = PickTheme(preset, out info.theme);
+            string wf = preset.Apply(wfText, Escape, themeText)
                 .Replace("\"{{INPUT_IMAGE}}\"", "{\"__type\":\"core/ASSET\",\"info\":{\"id\":\"" + assetId + "\"}}")
                 .Replace("{{SEED}}", info.seed.ToString());
 
@@ -121,7 +123,7 @@ namespace Silkroad
                         case "succeeded":
                             if (job.outputs != null)
                                 foreach (var o in job.outputs)
-                                    if (o.type == "image" && (o.node_id == outputNodeId || outAssetId == null)) outAssetId = o.id;
+                                    if (o.type == "image" && (o.node_id == outNode || outAssetId == null)) outAssetId = o.id;
                             if (outAssetId == null) { Fail(onError, "완료됐지만 이미지 출력이 없습니다:\n" + Shorten(txt)); yield break; }
                             break;
                     }

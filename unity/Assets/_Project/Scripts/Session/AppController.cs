@@ -26,9 +26,18 @@ namespace Silkroad
         public LoadingView loadingView;
         public ResultView resultView;
 
+        [Header("공통 두루마리 배경 (모든 화면이 같은 종이 위에 그려짐)")]
+        [Tooltip("메인 화면이 나올 때 왼쪽→오른쪽으로 펼쳐짐. 그림판·결과로 넘어가도 종이는 그대로")]
+        public ScrollReveal scrollStage;
+
         [Header("메인 화면 버튼")]
         public Button startButton;
         public Button quitButton;
+
+        [Header("저장 시 QR 공유 (같은 Wi-Fi 휴대폰에서 받기)")]
+        public bool shareWithQr = true;
+        string _shareUrl;   // 현재 결과의 공유 주소 (결과마다 한 번만 만듦)
+        string _shareError;
 
         [Header("결과 자동 저장 (원본/결과 PNG + 메타데이터 JSON)")]
         public bool autoSaveResults = true;
@@ -44,6 +53,7 @@ namespace Silkroad
         Texture2D _lastMine;
         Texture2D _lastAi;
         GenerationInfo _lastInfo;
+        int _variation;           // 같은 원본의 재요청 횟수 → 프리셋 seed 에 더함
         string _savedStamp;       // 현재 결과를 이미 저장했으면 그 파일 이름 앞부분
         bool _published;
 
@@ -56,7 +66,7 @@ namespace Silkroad
             Application.targetFrameRate = 60;               // 안드로이드 기본 30fps → 선이 부드럽게
             Screen.sleepTimeout = SleepTimeout.NeverSleep;  // 전시/체험용: 화면 꺼짐 방지
             startButton.onClick.AddListener(NewSession);
-            quitButton.onClick.AddListener(Quit);
+            if (quitButton) quitButton.gameObject.SetActive(false); // 종료 버튼은 사용하지 않음 (체험용 앱)
             loadingView.backButton.onClick.AddListener(CancelAndBack);
             resultView.homeButton.onClick.AddListener(ShowMain);
             resultView.retryButton.onClick.AddListener(Retry);
@@ -78,6 +88,7 @@ namespace Silkroad
         {
             CancelPending();
             Show(mainPanel);
+            if (scrollStage) scrollStage.Replay();
         }
 
         public void ShowPaint() => Show(paintPanel);
@@ -94,6 +105,7 @@ namespace Silkroad
             _lastInfo = null;
             _savedStamp = null;
             _published = false;
+            _shareUrl = null; _shareError = null;
             if (_lastMine != null) { Destroy(_lastMine); _lastMine = null; }
             if (_lastAi != null) { Destroy(_lastAi); _lastAi = null; }
             ShowPaint();
@@ -113,7 +125,7 @@ namespace Silkroad
             _pendingSourceId = Guid.NewGuid().ToString("N").Substring(0, 12);
             if (_pendingMine != null) Destroy(_pendingMine);
             _pendingMine = paintCanvas.CreateSnapshot();
-            Request(_pendingPng);
+            Request(_pendingPng, 0);
         }
 
         /// <summary>재요청: 같은 원본·스타일, 새 seed</summary>
@@ -122,10 +134,10 @@ namespace Silkroad
             if (_activeRequest >= 0) return;
             if (_lastPng == null) { ShowPaint(); return; }
             ClearPending();
-            Request(_lastPng);
+            Request(_lastPng, _variation + 1);
         }
 
-        void Request(byte[] png)
+        void Request(byte[] png, int variation)
         {
             int reqId = ++_requestSeq;
             string session = SessionId;
@@ -134,12 +146,13 @@ namespace Silkroad
 
             Show(loadingPanel);
             loadingView.ShowLoading();
-            comfy.Generate(png,
+            comfy.Generate(png, variation,
                 status => { if (IsCurrent(reqId, session)) loadingView.SetStatus(status); },
                 (tex, info) =>
                 {
                     if (!IsCurrent(reqId, session)) { Destroy(tex); return; } // 늦게 온 응답은 버림
                     _activeRequest = -1;
+                    _variation = variation; // 성공했을 때만 → 실패한 재요청은 같은 seed 로 다시 시도
                     OnResult(tex, info);
                 },
                 err =>
@@ -168,6 +181,7 @@ namespace Silkroad
             _lastAi = ai;
             _lastInfo = info;
             _savedStamp = null;
+            _shareUrl = null; _shareError = null;
             _published = false;
             Show(resultPanel);
             resultView.Show(_lastMine, _lastAi);
@@ -207,6 +221,29 @@ namespace Silkroad
             }
             resultView.SetStatus("");
             resultView.PlaySavedEffect(_lastAi); // 캡처 완료처럼 잠깐 표시 후 사라짐
+            if (shareWithQr) ShareResult();
+        }
+
+        /// <summary>[AI 결과 + 액자] 한 장을 만들어 태블릿 공유 서버에 올리고 QR 표시.</summary>
+        void ShareResult()
+        {
+            if (_shareUrl == null)
+            {
+                Texture2D framed = null;
+                try
+                {
+                    framed = resultView.ComposeFramed(_lastAi);
+                    byte[] png = (framed != null ? framed : _lastAi).EncodeToPNG();
+                    if (framed != null && _savedStamp != null)
+                    {
+                        try { File.WriteAllBytes(Path.Combine(SaveFolder, _savedStamp + "_framed.png"), png); } catch { }
+                    }
+                    _shareUrl = ShareServer.Instance.Publish(png, out _shareError);
+                }
+                catch (Exception e) { _shareError = e.Message; }
+                finally { if (framed != null) Destroy(framed); }
+            }
+            resultView.ShowShareQr(_shareUrl, _shareError);
         }
 
         /// <summary>원본/결과 PNG + 메타데이터 JSON 저장. 같은 결과는 한 번만 저장.</summary>
@@ -229,6 +266,8 @@ namespace Silkroad
                     seed = _lastInfo?.seed ?? 0,
                     styleId = _lastInfo?.preset,
                     workflow = _lastInfo?.workflow,
+                    frame = resultView.CurrentFrameName,
+                    theme = _lastInfo?.theme,
                     width = _lastAi.width,
                     height = _lastAi.height,
                     elapsedSeconds = (float)(DateTime.Now - _requestStart).TotalSeconds,
@@ -253,9 +292,11 @@ namespace Silkroad
             public int requestId;
             public string sourceImageId;
             public string promptId;
-            public int seed;
+            public long seed;
             public string styleId;
             public string workflow;
+            public string frame;
+            public string theme;
             public int width;
             public int height;
             public float elapsedSeconds;

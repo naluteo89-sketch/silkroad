@@ -20,10 +20,9 @@ namespace Silkroad
 
         void Awake()
         {
-            openButton.onClick.AddListener(Open);
-            closeButton.onClick.AddListener(Close);
-            saveButton.onClick.AddListener(Save);
-            testButton.onClick.AddListener(Test);
+            // Comfy 설정 화면은 사용하지 않음 (에디터 포함 항상 숨김). 설정은 Inspector 의 ComfyUI (설정) 에서만.
+            if (openButton) openButton.gameObject.SetActive(false);
+            gameObject.SetActive(false);
         }
 
         void Start() => gameObject.SetActive(false);

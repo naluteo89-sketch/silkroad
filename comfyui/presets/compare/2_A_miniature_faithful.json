@@ -1,0 +1,12 @@
+{
+  "name": "cmp_A_miniature_faithful",
+  "outputNode": "9",
+  "positive": "Repaint this child's drawing as a 16th-century Persian miniature painting on old, worn manuscript paper. Keep the drawing's subjects exactly: the same characters and animals, the same number of them, in the same positions, sizes and poses. Do not add any people, animals or creatures that are not in the drawing. Turn each crude shape into a natural, well-proportioned version of what it represents: people have normal bodies with two arms and two legs, and animals look like real animals of their kind (a horse looks like a real horse with four slender legs, a long head and a mane). Keep the colors the child chose for each area. Fill empty areas with simple scenery that fits the drawing, such as sky, distant hills, a river or desert, painted softly in the background. Painting style: delicate brushwork, fine dark contour lines, opaque mineral pigments with gold accents, ornamental patterns on clothes and saddle cloths, faded warm tones, visible paper grain and slight wear like an antique illustrated book. No frame, no border, no text.",
+  "negative": "extra people, crowd, extra animals, extra buildings, extra arms, extra legs, deformed animal, cow, dog, teeth, flat vector illustration, clean digital art, cartoon, anime, photo, 3d render, text, letters, border, frame",
+  "denoise": 1.0,
+  "steps": 30,
+  "cfg": 5.0,
+  "seed": 790848006145158,
+  "controlStrength": 1.0,
+  "_note": "A: 대상 유지 규칙 + 페르시아 세밀화 + 오래된 종이"
+}

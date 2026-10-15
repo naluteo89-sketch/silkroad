@@ -217,12 +217,7 @@ namespace Silkroad.EditorTools
             divSlider.value = 0.5f;
             rv.divider = divSlider;
 
-            var l1 = Label(area.transform, "MineLabel", "내 그림", Vector2.zero, new Vector2(240, 60), 34, Color.white);
-            Corner(l1.rectTransform, new Vector2(0, 0), new Vector2(140, 40));
-            l1.gameObject.AddComponent<Outline>().effectColor = Color.black;
-            var l2 = Label(area.transform, "AILabel", "AI 결과", Vector2.zero, new Vector2(240, 60), 34, Color.white);
-            Corner(l2.rectTransform, new Vector2(1, 0), new Vector2(-140, 40));
-            l2.gameObject.AddComponent<Outline>().effectColor = Color.black;
+            // ('내 그림' / 'AI 결과' 글씨는 사용하지 않음)
 
             rv.homeButton = Btn(rt, "HomeButton", "홈", new Vector2(-560, -440), new Vector2(260, 90), 30, ButtonColor);
             rv.retryButton = Btn(rt, "RetryButton", "재요청", new Vector2(-190, -440), new Vector2(260, 90), 30, AccentColor);
@@ -317,6 +312,7 @@ namespace Silkroad.EditorTools
             // 64비트 ARM (요즘 안드로이드 태블릿 필수)
             PlayerSettings.SetScriptingBackend(UnityEditor.Build.NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
+            PlayerSettings.Android.forceInternetPermission = true; // QR 공유 서버(태블릿 웹서버)용
 
             if (string.IsNullOrEmpty(PlayerSettings.productName) || PlayerSettings.productName == "New Project")
                 PlayerSettings.productName = "실크로드 그림 공방";

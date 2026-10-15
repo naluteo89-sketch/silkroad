@@ -18,6 +18,10 @@ namespace Silkroad
         public float unrollSeconds = 0.9f;
         [Tooltip("펼치기 시작 위치 (패널 왼쪽에서의 비율, 롤러 위치)")]
         [Range(0f, 0.5f)] public float startRatio = 0.08f;
+        [Tooltip("(선택) 펼쳐지는 끝을 따라 움직이는 말린 종이 롤러")]
+        public RectTransform travelRoller;
+        [Tooltip("(선택) 펼쳐지는 종이(Frame). 있으면 롤러가 이 종이의 왼쪽 끝→오른쪽 끝으로 이동")]
+        public RectTransform sheet;
 
         [Header("내용 나타나기")]
         public float fadeDelay = 0.15f;
@@ -42,6 +46,13 @@ namespace Silkroad
                 if (g == null) g = fadeTargets[i].AddComponent<CanvasGroup>();
                 _groups[i] = g;
             }
+        }
+
+        /// <summary>처음부터 다시 펼치기 (홈으로 돌아올 때 등).</summary>
+        public void Replay()
+        {
+            if (!isActiveAndEnabled) return;
+            OnEnable();
         }
 
         void OnEnable()
@@ -78,7 +89,20 @@ namespace Silkroad
 
         void SetUnroll(float k)
         {
-            float w = _rt.rect.width;
+            Rect r = _rt.rect;
+            if (travelRoller != null && sheet != null)
+            {
+                // 종이 왼쪽 끝 → 오른쪽 끝으로 롤러가 굴러가며 펼쳐짐. 롤러 오른쪽은 아직 말려 있어 안 보임
+                float left = sheet.anchoredPosition.x - sheet.rect.width * sheet.pivot.x;
+                float right = left + sheet.rect.width;
+                float edge = Mathf.Lerp(left + sheet.rect.width * startRatio, right, k);
+                travelRoller.anchoredPosition = new Vector2(edge, travelRoller.anchoredPosition.y);
+                travelRoller.gameObject.SetActive(k < 0.999f);
+                float cut = r.xMax - (edge + travelRoller.rect.width * 0.5f);
+                _mask.padding = new Vector4(0, 0, k >= 0.999f ? 0 : Mathf.Max(0, cut), 0);
+                return;
+            }
+            float w = r.width;
             float visible = Mathf.Lerp(w * startRatio, w, k);
             _mask.padding = new Vector4(0, 0, Mathf.Max(0, w - visible), 0);
         }

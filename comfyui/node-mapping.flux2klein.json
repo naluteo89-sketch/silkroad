@@ -1,0 +1,62 @@
+{
+  "workflow": "workflows/drawing_to_silkroad_flux2klein.api.json",
+  "preset": "presets/silkroad_flux2klein.json",
+  "version": "0.1.0",
+  "description": "Flux.2 Klein 9B 이미지 편집 워크플로 (ComfyUI 공식 템플릿 'Image Edit (Flux.2 Klein 9B)' 기반, 서브그래프를 풀어서 API 형식으로 변환). 워크플로를 바꾸면 이 파일도 같이 고칠 것.",
+  "placeholders": {
+    "{{INPUT_IMAGE}}": {
+      "node": "4",
+      "input": "image",
+      "source": "Unity: 업로드 응답 name / Cloud asset id",
+      "type": "string"
+    },
+    "{{POSITIVE}}": {
+      "node": "74",
+      "input": "text",
+      "source": "preset.positive",
+      "type": "string"
+    },
+    "{{NEGATIVE}}": {
+      "node": "67",
+      "input": "text",
+      "source": "preset.negative (템플릿 기본값은 빈 문자열)",
+      "type": "string"
+    },
+    "{{SEED}}": {
+      "node": "73",
+      "input": "noise_seed",
+      "source": "preset.seed + 재요청 횟수 (새 그림 보내기 = +0, 재요청마다 +1). preset.seed 가 0 이면 매번 랜덤",
+      "type": "number"
+    },
+    "{{STEPS}}": {
+      "node": "62",
+      "input": "steps",
+      "source": "preset.steps",
+      "type": "number"
+    },
+    "{{CFG}}": {
+      "node": "63",
+      "input": "cfg",
+      "source": "preset.cfg",
+      "type": "number"
+    }
+  },
+  "unused_preset_fields": [
+    "denoise",
+    "controlStrength"
+  ],
+  "output": {
+    "node": "12",
+    "class_type": "SaveImage",
+    "note": "기존 SDXL 워크플로와 같은 ID 라서 Unity Output Node Id 는 그대로 12"
+  },
+  "size": {
+    "node": "80",
+    "note": "입력 비율을 유지한 채 약 1MP 로 맞추고, GetImageSize(100) 로 출력 크기도 같게 함 (1280x720 입력 → 약 1333x750)"
+  },
+  "models": {
+    "diffusion_models": "flux-2-klein-base-9b-fp8.safetensors (BFL 저장소에서 약관 동의 후 다운로드)",
+    "text_encoders": "qwen_3_8b_fp8mixed.safetensors",
+    "vae": "full_encoder_small_decoder.safetensors"
+  }
+}

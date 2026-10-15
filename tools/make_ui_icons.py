@@ -40,7 +40,7 @@ def medallion(seal=False, n=256):
         d.polygon(pts, fill=SEAL_D)
         circ(N * 0.40, SEAL)
         circ(N * 0.33, None, SEAL_D, int(S * 5))
-        d.ellipse([c - N*0.30, c - N*0.34, c + N*0.05, c - N*0.10], fill=SEAL_L + (35,))
+        hl = canvas(n); ImageDraw.Draw(hl).ellipse([c - N*0.30, c - N*0.34, c + N*0.05, c - N*0.10], fill=SEAL_L + (35,)); im.alpha_composite(hl)  # 광택 (덮어쓰지 않고 겹치기)
     else:  # 금테 + 양피지 메달
         circ(N * 0.45, RIM)
         circ(N * 0.43, GOLD)
@@ -50,7 +50,7 @@ def medallion(seal=False, n=256):
         circ(N * 0.375, RIM)
         circ(N * 0.36, PARCH)
         circ(N * 0.32, None, PARCH_D, int(S * 3))
-        d.ellipse([c - N*0.28, c - N*0.33, c + N*0.10, c - N*0.12], fill=(255, 255, 255, 28))
+        hl = canvas(n); ImageDraw.Draw(hl).ellipse([c - N*0.28, c - N*0.33, c + N*0.10, c - N*0.12], fill=(255, 255, 255, 28)); im.alpha_composite(hl)  # 광택 (덮어쓰지 않고 겹치기)
     return im
 
 

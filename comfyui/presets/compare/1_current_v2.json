@@ -1,0 +1,12 @@
+{
+  "name": "cmp_V2_current",
+  "outputNode": "9",
+  "positive": "Transform this child's hand drawing into a finished Persian miniature painting in the style of a 16th-century Silk Road illuminated manuscript. Keep exactly the same composition, subjects, poses, positions and proportions as the drawing; every object in the sketch must stay where it is. Correct anatomy: every person has exactly one head, two arms and two legs; every horse or camel has exactly four legs, one head and one tail. Each stroke the child drew for a limb becomes one single limb, never several. The finished painting completely replaces the sketch: do not leave the original pencil lines as ghost or extra arms and legs. If a body part is unclear in the drawing, paint a simple natural pose instead of adding more parts. Repaint each shape as an elegant miniature figure or object with fine black ink outlines, flat mineral pigment colors (lapis lazuli blue, vermilion red, malachite green, ochre) and gold leaf accents, delicate ornamental patterns on clothing, textiles and saddles, stylized rocky hills, swirling Chinese-style clouds and decorative plants filling the background. Aged warm paper texture, soft matte finish, highly detailed, harmonious balanced colors. The image fills the whole canvas with no border and no frame.",
+  "negative": "extra arms, extra hands, multiple arms, three arms, four arms, extra legs, duplicate limbs, ghost limbs, fused limbs, floating limbs, malformed hands, bad anatomy, two heads, visible sketch lines, photo, photorealistic, 3d render, anime, modern cartoon, crayon, child scribble, messy lines, blurry, low quality, distorted, deformed, duplicated objects, new objects not in the drawing, text, letters, watermark, signature, border, picture frame",
+  "denoise": 1.0,
+  "steps": 30,
+  "cfg": 5.0,
+  "seed": 790848006145158,
+  "controlStrength": 1.0,
+  "_note": "현재 앱 설정 (비교 기준)"
+}

@@ -7,6 +7,8 @@ namespace Silkroad
     public class LoadingView : MonoBehaviour
     {
         public RectTransform icon;
+        [Tooltip("(선택) 아이콘 뒤에서 천천히 도는 장식 고리")]
+        public RectTransform ring;
         public Text messageText;
         public Text errorText;
         public Button backButton;
@@ -30,6 +32,7 @@ namespace Silkroad
             _loading = true;
             messageText.gameObject.SetActive(true);
             if (icon) icon.gameObject.SetActive(true);
+            if (ring) ring.gameObject.SetActive(true);
             errorText.gameObject.SetActive(false);
             backButton.GetComponentInChildren<Text>().text = "취소";
         }
@@ -39,6 +42,7 @@ namespace Silkroad
             _loading = false;
             messageText.gameObject.SetActive(false);
             if (icon) icon.gameObject.SetActive(false);
+            if (ring) ring.gameObject.SetActive(false);
             errorText.gameObject.SetActive(true);
             errorText.text = "생성에 실패했어요.\n\n" + msg;
             backButton.GetComponentInChildren<Text>().text = backLabel;
@@ -50,9 +54,11 @@ namespace Silkroad
             float t = Time.unscaledTime;
             if (icon)
             {
-                icon.anchoredPosition = _iconBase + new Vector2(0, Mathf.Abs(Mathf.Sin(t * 3f)) * 20f);
-                icon.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 3f) * 8f);
+                // 낙타가 걷는 것처럼 살짝 위아래로 흔들림
+                icon.anchoredPosition = _iconBase + new Vector2(0, Mathf.Abs(Mathf.Sin(t * 4f)) * 10f);
+                icon.localRotation = Quaternion.Euler(0, 0, Mathf.Sin(t * 4f) * 3f);
             }
+            if (ring) ring.localRotation = Quaternion.Euler(0, 0, -t * 60f); // 밝은 구슬이 시계 방향으로 돎
             int dots = (int)(t * 2f) % 4;
             messageText.text = message + new string('.', dots);
         }

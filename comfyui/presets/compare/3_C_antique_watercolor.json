@@ -1,0 +1,12 @@
+{
+  "name": "cmp_C_antique_watercolor",
+  "outputNode": "9",
+  "positive": "Repaint this child's drawing as a detailed ink and watercolor illustration from an antique Silk Road travel book. Keep the drawing's subjects exactly: the same characters and animals, the same number of them, in the same positions, sizes and poses. Do not add any people, animals or creatures that are not in the drawing. Turn each crude shape into a natural, well-proportioned version of what it represents: people have normal bodies with two arms and two legs, and animals look like real animals of their kind (a horse looks like a real horse with four slender legs, a long head and a mane). Keep the colors the child chose for each area. Fill empty areas with simple scenery that fits the drawing, such as sky, distant hills, a river or desert, painted softly in the background. Painting style: fine pen outlines, soft layered washes of color, Persian and Central Asian costumes and ornaments, warm earthy palette with touches of red and blue, weathered yellowed paper with stains and texture, like a 19th-century hand-painted book plate. No frame, no border, no text.",
+  "negative": "extra people, crowd, extra animals, extra buildings, extra arms, extra legs, deformed animal, cow, dog, teeth, flat vector illustration, clean digital art, cartoon, anime, photo, 3d render, text, letters, border, frame",
+  "denoise": 1.0,
+  "steps": 30,
+  "cfg": 5.0,
+  "seed": 790848006145158,
+  "controlStrength": 1.0,
+  "_note": "C: 대상 유지 규칙 + 고서 삽화(잉크·수채) 화풍 — 참고 영상 결과 느낌"
+}

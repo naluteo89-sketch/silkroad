@@ -79,11 +79,12 @@ namespace Silkroad.EditorTools
             rv.aiLayer = layer;
             EditorUtility.SetDirty(rv);
 
-            // 4) 라벨은 창 아래 모서리, 막대(Divider)는 맨 위 (드래그 받도록)
-            var mine = area.Find("MineLabel") as RectTransform;
-            var aiLabel = area.Find("AILabel") as RectTransform;
-            if (mine) { Center(mine); mine.anchoredPosition = winOffset + new Vector2(-winSize.x / 2 + 140, -winSize.y / 2 + 40); mine.SetAsLastSibling(); }
-            if (aiLabel) { Center(aiLabel); aiLabel.anchoredPosition = winOffset + new Vector2(winSize.x / 2 - 140, -winSize.y / 2 + 40); aiLabel.SetAsLastSibling(); }
+            // 4) '내 그림' / 'AI 결과' 글씨 제거, 막대(Divider)는 맨 위 (드래그 받도록)
+            foreach (var labelName in new[] { "MineLabel", "AILabel" })
+            {
+                var label = area.Find(labelName);
+                if (label) Object.DestroyImmediate(label.gameObject);
+            }
             var div = area.Find("Divider");
             if (div) div.SetAsLastSibling();
 

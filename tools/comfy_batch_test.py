@@ -13,6 +13,7 @@ Unity 없이 shared/test-drawings 의 그림들을 ComfyUI 에 보내 결과와 
     --workflow 워크플로 (기본: comfyui/workflows/drawing_to_silkroad.api.json)
     --preset   프리셋 (기본: comfyui/presets/silkroad_style.json)
     --seeds    그림당 seed 개수 (기본 3) / --seed-base 고정 seed 시작값 (기본 1000, 같은 값이면 재현 가능)
+               프리셋에 "seed" 가 있으면 그 값부터 시작 (앱의 새 그림 = seed, 재요청 = seed+1, +2 …)
     --set denoise=0.6  프리셋 값 덮어쓰기 (여러 번 가능) → 한 번에 한 변수만 바꿔 비교
     --warmup   본 측정 전에 1회 실행해 모델 로딩 시간을 분리 (기본 켜짐)
 
@@ -218,7 +219,8 @@ def main():
     rows, times = [], []
     for img in images:
         for i in range(a.seeds):
-            seed = a.seed_base + i
+            # 프리셋에 seed 가 있으면 앱과 같게 preset.seed + i (i = 재요청 횟수), 없으면 --seed-base + i
+            seed = int(preset.get("seed") or a.seed_base) + i
             t = time.time()
             try:
                 pid, data = one(os.path.join(a.images, img), seed)

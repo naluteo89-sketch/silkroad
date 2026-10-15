@@ -15,14 +15,13 @@
 | 2 | 워크플로의 `"{{INPUT_IMAGE}}"` → `{"__type":"core/ASSET","info":{"id":"<asset id>"}}` 로 치환 | |
 | 3 | `POST /api/v2/jobs` `{workflow, extra_data.api_key_comfy_org, metadata}` + `Idempotency-Key` 헤더 → job `id` | 대기 중 |
 | 4 | `GET /api/v2/jobs/{id}` 반복 — `queued`/`running`/`succeeded`/`failed`/`canceled`/`expired` | 대기 중 / 생성 중 |
-| 5 | `outputs[]` 중 `node_id == 12` 이미지 → `GET /api/v2/assets/{id}/content` (302) → 서명 URL 을 **인증 헤더 없이** 다운로드 | 결과 받는 중 |
+| 5 | `outputs[]` 중 `node_id == outputNode` 이미지 → `GET /api/v2/assets/{id}/content` (302) → 서명 URL 을 **인증 헤더 없이** 다운로드 | 결과 받는 중 |
 
 준비:
 0. API 키: `C:\keydata\comfy_key.py` 의 `comfy_key` 를 자동으로 읽음 (도구·에디터·빌드). 빌드 때만 `StreamingAssets/ComfyUI/comfy_key.txt` 가 잠깐 생겼다 삭제됨
 1. comfy.org 계정 + **Standard 이상 구독** (무료 플랜은 API 불가) → platform.comfy.org 에서 API 키 발급
 2. Unity `ComfyUI (설정)` → Server Url `https://cloud.comfy.org`, Api Key 는 비워 둠, Use Dummy 해제
-3. 모델 이름은 **Comfy Cloud 에 있는 모델 이름**이어야 함 → `python tools/check_comfyui.py --server https://cloud.comfy.org` 로 확인 후 워크플로 JSON 수정
-4. `python tools/comfy_batch_test.py --server https://cloud.comfy.org --seeds 1`
+3. 워크플로의 모델 이름은 **Comfy Cloud 에 있는 모델 이름**이어야 함 (Cloud 웹 UI 에서 불러와 실행되는 워크플로를 Export (API) 하면 안전)
 
 주의:
 - API 키는 빌드(apk)에 포함됨 → 체험 전용 키를 만들고 사용량/결제 한도를 걸어 둘 것. 외부 배포 시엔 중계 서버로 키를 숨기는 방식 검토
@@ -61,12 +60,13 @@
 
 ## 워크플로 교체 절차
 
+> 2026-10-15: 이전 워크플로·프리셋·노드 매핑·테스트 도구(`comfyui/`, `tools/*comfy*`)는 모두 정리됨.
+
 1. ComfyUI 웹에서 워크플로 수정 → **Workflow → Export (API)** 로 저장
-2. 입력/프롬프트/seed 등 값 자리에 자리표시자 입력 (숫자 자리는 따옴표 없이: `"seed": {{SEED}}`)
-3. `comfyui/workflows/drawing_to_silkroad.api.json` 에 덮어쓰고 `comfyui/node-mapping.json` 의 노드 ID 갱신
-4. SaveImage 노드 ID 가 바뀌었으면 Unity Inspector `Output Node Id` 도 변경
-5. `tools/sync_comfyui.bat` 실행 → StreamingAssets 로 복사
-6. `python tools/comfy_batch_test.py --seeds 1` 로 먼저 동작 확인
+2. 입력/프롬프트/seed 등 값 자리에 자리표시자 입력 (숫자 자리는 따옴표 없이: `"noise_seed": {{SEED}}`)
+3. `unity/Assets/StreamingAssets/ComfyUI/drawing_to_silkroad.api.json` 으로 저장
+4. 같은 폴더 `silkroad_style.json` 의 `outputNode` 를 결과 SaveImage 노드 ID 로
+5. Unity ▶ 실행 → 그림 → 보내기 로 동작 확인
 
 ## 네트워크 (태블릿 ↔ GPU PC)
 

@@ -1,9 +1,35 @@
 {
-  "name": "silkroad_miniature_v2",
-  "positive": "masterpiece persian miniature painting of a silk road scene, 16th century illuminated manuscript style, intricate ornamental details, fine ink outlines, mineral pigments, lapis lazuli blue, vermilion, ochre and gold leaf, richly decorated saddle and textiles, stylized hills and clouds, aged paper texture, highly detailed, best quality",
-  "negative": "photo, photorealistic, 3d render, anime, cartoon, child drawing, crayon, flat colors, simple shapes, abstract, blurry, low quality, lowres, distorted, deformed, extra limbs, duplicate objects, text, watermark, logo, signature",
-  "denoise": 0.85,
-  "steps": 30,
-  "cfg": 7.0,
-  "controlStrength": 0.65
+  "name": "silkroad_klein_user_v4_relaxed",
+  "outputNode": "9",
+  "positive": "Transform the supplied drawing into a finished Silk Road scene using the painting techniques of a refined 16th-century Persian miniature, presented as a single seamless painting.\n\nUse the drawing to determine the scene’s content. Interpret its colored regions and rough marks together with their shapes, positions, and surrounding context to recognize the intended subjects and environment. Color helps distinguish regions; context determines what each region represents.\n\nPreserve the main subjects, their approximate locations, relative sizes, facing directions, actions, and relationships.\n\nInterpret each main subject as a whole, using its strongest recognizable features together with its full silhouette and context. Keep its identity consistent from head to body to limbs. Resolve ambiguous body marks into anatomy appropriate to that same subject, rather than combining different species or human and animal bodies. Ordinary animals retain their species-appropriate bodies, stance, and natural body covering; human figures retain human anatomy. Preserve clearly intentional fantastical features only when supported by the drawing.\n\nFor the original subjects, preserve whether clothing, coverings, and equipment are present or absent. Refine only items visibly supported by the drawing, keeping their coverage local to the original area. Exposed body surfaces remain exposed and naturally rendered. A colored patch alone is not evidence of a garment or equipment. Apply the Silk Road character through painting technique and surrounding scenery, without dressing or equipping the original subjects with invented items.\n\nPreserve the meaning and broad arrangement of the environment while creatively redesigning its painted scenery. A body of water remains water, mountains remain mountains, and land remains land. These regions serve as a compositional guide rather than fixed outlines.\n\nReimagine the profiles, contours, terrain, vegetation, and spatial depth of the environmental features actually present to suit the selected Silk Road setting. Keep the original scene recognizable while allowing the background to become a distinct, fully developed landscape.\n\nResolve the rough drawing into accomplished painted forms. Give the original subjects coherent anatomy, refined features, and carefully rendered materials while retaining their intended poses and distinctive characteristics. Each subject forms one coherent whole, with held objects and connecting elements attached consistently. Keep uncertain forms close to the visible evidence in the drawing.\n\nUse a consistent visual style throughout: extremely fine dark ink outlines, delicate opaque gouache brushwork, flat pictorial space, restrained modeling, muted lapis blue, earthy vermilion, malachite green, warm ochre, and selective antique-gold accents. Render the recognized subjects with refined, species-appropriate features and natural surface detail. Add intricate ornament only within clearly existing decorative surfaces on the original subjects, or suitable surfaces of permitted background additions. Keep skin, fur, feathers, and other natural body coverings free of textile ornament. The finish is matte, with softly muted pigments on a clean, continuous, evenly textured surface. Keep the surface visually uniform across the entire image.\n\nIntegrate the original subjects into the painted setting through a shared palette, consistent detail, and natural contact with their surroundings. Their presence and actions remain the focus.\n\nDevelop the background according to the selected supporting concept below, letting the concept clearly define the character of the setting. Adapt additions to the existing geography and available space. Keep additions smaller than the original subjects so the subjects remain readable.\n\nVary the landscape design as well as its supporting details. Let the selected concept influence the forms of existing terrain, distant scenery, vegetation, and placement of architecture, rather than merely adding different props to the same background.\n\nKeep the main subjects consistent with the input. Maintain the same Persian miniature painting style, palette, line quality, and finish, while the background setting may change substantially to follow the supporting concept.\n\nPresent only the finished painting, extending to the canvas edges. The image is one continuous artwork, not an open book or a photographed manuscript page. No central crease, page fold, binding gutter, seam, vertical dividing line, stain, scratch, distressed-paper marks, border, frame, lettering, or interface.\n\nSupporting concept: {{THEME}}",
+  "defaultTheme": "A peaceful Silk Road landscape. Develop the existing terrain into graceful layered forms, with sparse regional plants and delicate environmental details suited to the geography already drawn. Keep the setting quiet and spacious, with the original subjects as its focus.",
+  "themes": [
+    {
+      "name": "02. 궁전 주변",
+      "prompt": "A quiet Silk Road palace setting. Where existing land offers suitable space, integrate a modest distant palace, elegant terraces, and restrained garden planting into the landscape. Shape the surrounding scenery to support the palace setting while retaining the original environmental regions and keeping the main subjects dominant."
+    },
+    {
+      "name": "03. 교역 도시",
+      "prompt": "A Silk Road trading settlement. Develop suitable background land into a small, naturally integrated settlement with varied rooftops, modest courtyards, and a few distant townspeople in informal groups. Adapt the settlement to the existing terrain, leaving the original subjects and major environmental regions clearly readable."
+    },
+    {
+      "name": "04. 나루터",
+      "prompt": "A quiet Silk Road ferry crossing. Where the drawing contains a suitable body of water, enrich it with a small boat carrying a few distant passengers and a modest landing on an existing bank. Develop the surrounding banks and distant scenery while preserving the water's broad placement and continuity. If suitable water is absent, use quiet local landscape detail instead."
+    },
+    {
+      "name": "05. 카라반 숙소",
+      "prompt": "A peaceful Silk Road caravanserai. Where suitable background land is available, integrate a small distant courtyard inn with a sheltered gateway and a few resting travelers. Let its placement follow the existing terrain, with restrained architectural detail and ample open space around the original subjects."
+    },
+    {
+      "name": "06. 강변 정착지",
+      "prompt": "A small Silk Road waterside settlement. Where water and suitable banks already exist, place a few distant buildings and subtle signs of daily life along the shoreline. Reinterpret the bank contours and distant landscape into a harmonious setting while keeping the original water region clearly recognizable. If the geography is unsuitable, use sparse settlement details on existing land instead."
+    }
+  ],
+  "negative": "",
+  "steps": 20,
+  "cfg": 5.0,
+  "seed": 790308481617735,
+  "denoise": 1.0,
+  "controlStrength": 1.0,
+  "_note": "silk-road-full-prompt.txt + silk-road-themes.txt. 처음 보내기 = 01 자연 풍경(defaultTheme), 재요청 = 02~06 중 랜덤 1개(직전과 다르게). 테마는 Supporting concept 문장만 교체. | v4: 배경 유지 문장 2곳 완화 (테마가 배경을 더 크게 바꾸도록)."
 }

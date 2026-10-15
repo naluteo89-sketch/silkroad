@@ -1,9 +1,12 @@
 {
-  "name": "silkroad_miniature_v2",
-  "positive": "(masterpiece, best quality, ultra-detailed, 8k), traditional Persian miniature painting, ancient Silk Road art style, highly intricate details, flat perspective, rich and vibrant colors, (a wise old merchant with a long white beard wearing an ornate red and gold patterned robe and a jeweled turban:1.2), sitting on a highly detailed Persian carpet, holding a thin rope, (a majestic brown horse with a beautifully decorated red and gold saddle and bridle:1.2), standing on sandy ground with sparse grass, scenic background, (a grand ancient Middle Eastern city with domed mosques and towers:1.1), calm blue river with small wooden boats, snow-capped mountains in the distance, clear blue sky with stylized fluffy clouds, gold leaf accents, antique texture, masterpiece illustration, ornate golden frame",
-  "negative": "(worst quality, low quality:1.4), 3d render, photorealistic, modern, photograph, blurry, messy lines, stick figure, child's drawing, crayon, simple colors, deformed, bad anatomy, bad proportions, text, watermark, signature, ugly, distorted face, extra limbs",
-  "denoise": 0.85,
+  "name": "silkroad_flux2_klein_v2_anatomy",
+  "outputNode": "9",
+  "positive": "Transform this child's hand drawing into a finished Persian miniature painting in the style of a 16th-century Silk Road illuminated manuscript. Keep exactly the same composition, subjects, poses, positions and proportions as the drawing; every object in the sketch must stay where it is. Correct anatomy: every person has exactly one head, two arms and two legs; every horse or camel has exactly four legs, one head and one tail. Each stroke the child drew for a limb becomes one single limb, never several. The finished painting completely replaces the sketch: do not leave the original pencil lines as ghost or extra arms and legs. If a body part is unclear in the drawing, paint a simple natural pose instead of adding more parts. Repaint each shape as an elegant miniature figure or object with fine black ink outlines, flat mineral pigment colors (lapis lazuli blue, vermilion red, malachite green, ochre) and gold leaf accents, delicate ornamental patterns on clothing, textiles and saddles, stylized rocky hills, swirling Chinese-style clouds and decorative plants filling the background. Aged warm paper texture, soft matte finish, highly detailed, harmonious balanced colors. The image fills the whole canvas with no border and no frame.",
+  "negative": "extra arms, extra hands, multiple arms, three arms, four arms, extra legs, duplicate limbs, ghost limbs, fused limbs, floating limbs, malformed hands, bad anatomy, two heads, visible sketch lines, photo, photorealistic, 3d render, anime, modern cartoon, crayon, child scribble, messy lines, blurry, low quality, distorted, deformed, duplicated objects, new objects not in the drawing, text, letters, watermark, signature, border, picture frame",
+  "denoise": 1.0,
   "steps": 30,
-  "cfg": 7.0,
-  "controlStrength": 0.75
+  "cfg": 5.0,
+  "seed": 790848006145158,
+  "controlStrength": 1.0,
+  "_note": "Flux.2 Klein 9B 편집 워크플로용. v2: 팔·다리 개수 규칙 + 부정 프롬프트 강화, steps 20→30. seed>0 이면 새 그림=seed, 재요청=seed+1… / 0 이면 매번 랜덤. denoise/controlStrength 는 사용 안 함."
 }
