@@ -120,7 +120,7 @@
     "class_type": "CLIPLoader",
     "inputs": {
       "clip_name": "qwen_3_8b_fp8mixed.safetensors",
-      "type": "flux2",
+      "type": "flux3",
       "device": "default"
     }
   },
