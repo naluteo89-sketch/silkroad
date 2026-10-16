@@ -23,33 +23,6 @@ MonoBehaviour:
       width: 1608
       height: 909
     enabled: 1
-  - name: frame_carved_walnut
-    sprite: {fileID: 21300000, guid: 58607babc989a0542a17467f28e52d8d, type: 3}
-    size: {x: 2000, y: 1223}
-    window:
-      x: 112
-      y: 111
-      width: 1777
-      height: 1000
-    enabled: 1
-  - name: frame_ivory_arabesque
-    sprite: {fileID: 21300000, guid: b8f8e5949164fc14d9d3cb05452a3bbc, type: 3}
-    size: {x: 2000, y: 1223}
-    window:
-      x: 112
-      y: 111
-      width: 1777
-      height: 1000
-    enabled: 1
-  - name: frame_lapis_tile
-    sprite: {fileID: 21300000, guid: 7aad768b2560cb849a34aa4bb71fdeca, type: 3}
-    size: {x: 2000, y: 1223}
-    window:
-      x: 112
-      y: 111
-      width: 1777
-      height: 1000
-    enabled: 1
   - name: frame_original
     sprite: {fileID: 21300000, guid: 06942323ddc881f47b04c1a40d8b4c83, type: 3}
     size: {x: 2000, y: 1200}
@@ -59,12 +32,12 @@ MonoBehaviour:
       width: 1608
       height: 782
     enabled: 1
-  - name: frame_red_lacquer
-    sprite: {fileID: 21300000, guid: 990faab55526ebb458c8d22bb474732a, type: 3}
-    size: {x: 2000, y: 1223}
+  - name: frame_wood_carved
+    sprite: {fileID: 21300000, guid: cbf7b2e707f1d13479073077abd3cc40, type: 3}
+    size: {x: 2000, y: 1237}
     window:
-      x: 112
-      y: 111
-      width: 1777
-      height: 1000
+      x: 133
+      y: 120
+      width: 1754
+      height: 984
     enabled: 1

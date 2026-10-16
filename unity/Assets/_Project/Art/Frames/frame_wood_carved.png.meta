@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: 990faab55526ebb458c8d22bb474732a
+guid: cbf7b2e707f1d13479073077abd3cc40
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 5686425502343708525
-    second: frame_red_lacquer_0
+      213: -3859958245759599546
+    second: frame_wood_carved_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: frame_red_lacquer_0
+      name: frame_wood_carved_0
       rect:
         serializedVersion: 2
         x: 0
         y: 0
         width: 2000
-        height: 1327
+        height: 1237
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: d6f3beccddd3aee40800000000000000
-      internalID: 5686425502343708525
+      spriteID: 64cb8a92d6cae6ac0800000000000000
+      internalID: -3859958245759599546
       vertices: []
       indices: 
       edges: []
