@@ -26,6 +26,7 @@
 /unity/sysinfo.txt
 /unity/crashlytics-build.properties
 
+
 # ===== ComfyUI 실행 환경 / 모델 (저장소에 넣지 않음) =====
 /comfyui/ComfyUI/
 /comfyui/ComfyUI_windows_portable/
