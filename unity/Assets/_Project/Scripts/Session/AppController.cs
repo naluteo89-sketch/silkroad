@@ -266,6 +266,10 @@ namespace Silkroad
                     seed = _lastInfo?.seed ?? 0,
                     styleId = _lastInfo?.preset,
                     workflow = _lastInfo?.workflow,
+                    inputSha256 = _lastInfo?.inputSha256,
+                    inputAssetId = _lastInfo?.inputAssetId,
+                    outputNode = _lastInfo?.outputNode,
+                    outputAssetId = _lastInfo?.outputAssetId,
                     frame = resultView.CurrentFrameName,
                     theme = _lastInfo?.theme,
                     width = _lastAi.width,
@@ -295,6 +299,10 @@ namespace Silkroad
             public long seed;
             public string styleId;
             public string workflow;
+            public string inputSha256;
+            public string inputAssetId;
+            public string outputNode;
+            public string outputAssetId;
             public string frame;
             public string theme;
             public int width;

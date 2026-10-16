@@ -30,7 +30,7 @@ namespace Silkroad
 
             // 1) 업로드
             onStatus?.Invoke("업로드 중");
-            string fileName = "unity_paint_" + DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".png";
+            string fileName = "unity_paint_" + Guid.NewGuid().ToString("N") + ".png";
             // comfy-sdk(comfy_low.transport.post_assets) 와 같은 형식: 텍스트 필드 → file 순서
             string boundary = "----silkroad" + Guid.NewGuid().ToString("N");
             var ms = new System.IO.MemoryStream();
@@ -60,6 +60,8 @@ namespace Silkroad
             string wfText = null, presetText = null, readError = null;
             yield return ReadStreaming(workflowPath, t => wfText = t, e => readError = e);
             if (wfText == null) { Fail(onError, "워크플로 파일을 읽지 못했습니다: " + readError); yield break; }
+            if (!wfText.Contains("\"{{INPUT_IMAGE}}\""))
+            { Fail(onError, "워크플로에 그림 입력 {{INPUT_IMAGE}}가 없습니다. 고정 이미지로 생성하지 않도록 중단했습니다."); yield break; }
             yield return ReadStreaming(presetPath, t => presetText = t, e => { });
             var preset = fallbackPreset;
             if (!string.IsNullOrEmpty(presetText))
@@ -72,8 +74,13 @@ namespace Silkroad
             info.seed = PickSeed(preset);
             string themeText = PickTheme(preset, out info.theme);
             string wf = preset.Apply(wfText, Escape, themeText)
-                .Replace("\"{{INPUT_IMAGE}}\"", "{\"__type\":\"core/ASSET\",\"info\":{\"id\":\"" + assetId + "\"}}")
+                .Replace("\"{{INPUT_IMAGE}}\"", "{\"__type\":\"core/ASSET\",\"info\":{\"id\":\"" + Escape(assetId) + "\"}}")
                 .Replace("{{SEED}}", info.seed.ToString());
+            info.inputAssetId = assetId;
+            info.outputNode = outNode;
+            using (var sha = System.Security.Cryptography.SHA256.Create())
+                info.inputSha256 = BitConverter.ToString(sha.ComputeHash(png)).Replace("-", "").ToLowerInvariant();
+            Debug.Log("[ComfyCloud] input=" + info.inputSha256 + " asset=" + assetId + " outputNode=" + outNode);
 
             // 3) 실행 요청
             var body = new StringBuilder();
@@ -123,8 +130,11 @@ namespace Silkroad
                         case "succeeded":
                             if (job.outputs != null)
                                 foreach (var o in job.outputs)
-                                    if (o.type == "image" && (o.node_id == outNode || outAssetId == null)) outAssetId = o.id;
-                            if (outAssetId == null) { Fail(onError, "완료됐지만 이미지 출력이 없습니다:\n" + Shorten(txt)); yield break; }
+                                    if (o != null && o.type == "image" && o.node_id == outNode && !string.IsNullOrEmpty(o.id))
+                                    { outAssetId = o.id; break; }
+                            if (outAssetId == null) { Fail(onError, "완료됐지만 지정한 출력 노드 " + outNode + "의 이미지가 없습니다 (job " + jobId + ")."); yield break; }
+                            info.outputAssetId = outAssetId;
+                            Debug.Log("[ComfyCloud] job=" + jobId + " result=" + outAssetId);
                             break;
                     }
                 }

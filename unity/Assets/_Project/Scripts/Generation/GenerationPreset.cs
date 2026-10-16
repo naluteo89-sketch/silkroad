@@ -21,6 +21,8 @@ namespace Silkroad
         public float controlStrength = 0.6f;
         /// <summary>0 보다 크면 고정 seed: 새 그림 = seed, 재요청 = seed+1, +2 … / 0 이면 매번 랜덤.</summary>
         public long seed = 0;
+        // ComfyUI control_after_generate: first send uses the exported seed.
+        public string seedControl = "increment";
 
         [Serializable]
         public class Theme

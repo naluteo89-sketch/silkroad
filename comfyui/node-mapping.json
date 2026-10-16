@@ -1,6 +1,6 @@
 {
   "workflow": "workflows/drawing_to_silkroad.api.json",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "model": "Flux.2 Klein 9B (image edit, ReferenceLatent)",
   "description": "Unity ComfyUIClient 가 실행 전에 치환하는 자리표시자와 담당 노드. 워크플로를 바꾸면 이 파일과 프리셋 outputNode 도 같이 고칠 것.",
   "placeholders": {
@@ -25,7 +25,7 @@
     "{{SEED}}": {
       "node": "73",
       "input": "noise_seed",
-      "source": "Unity: 요청마다 랜덤",
+      "source": "preset.seed on first send; preset.seedControl=randomize on retry",
       "type": "number"
     },
     "{{STEPS}}": {
@@ -50,5 +50,7 @@
     "node": "80",
     "note": "ImageScaleToTotalPixels 1MP, 비율 유지 (Unity 1280x720 → 약 1333x750)"
   },
-  "backup": "workflows/drawing_to_silkroad_sdxl.api.json (이전 SDXL+Canny, 출력 노드 12, 입력 노드 4)"
+  "backup": "workflows/drawing_to_silkroad_sdxl.api.json (이전 SDXL+Canny, 출력 노드 12, 입력 노드 4)",
+  "preset": "presets/silkroad_style.json",
+  "source": "workflows/klein_00001_.json"
 }

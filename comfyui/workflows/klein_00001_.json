@@ -1,0 +1,1039 @@
+{
+  "id": "74de06c7-757f-4ca9-a565-fa58cddd24e7",
+  "revision": 0,
+  "last_node_id": 124,
+  "last_link_id": 25,
+  "nodes": [
+    {
+      "id": 9,
+      "type": "SaveImage",
+      "pos": [
+        2494.2073028564455,
+        130
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 18,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "link": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "images",
+          "type": "IMAGE",
+          "links": null
+        }
+      ],
+      "title": "OUTPUT",
+      "properties": {},
+      "widgets_values": [
+        "silkroad/klein"
+      ],
+      "widgets_values_named": {
+        "filename_prefix": "silkroad/klein"
+      }
+    },
+    {
+      "id": 61,
+      "type": "KSamplerSelect",
+      "pos": [
+        100,
+        130
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 0,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "SAMPLER",
+          "type": "SAMPLER",
+          "links": [
+            10
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "KSamplerSelect"
+      },
+      "widgets_values": [
+        "euler"
+      ],
+      "widgets_values_named": {
+        "sampler_name": "euler"
+      }
+    },
+    {
+      "id": 62,
+      "type": "Flux2Scheduler",
+      "pos": [
+        1233.694906616211,
+        130
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 11,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 3
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 2
+        }
+      ],
+      "outputs": [
+        {
+          "name": "SIGMAS",
+          "type": "SIGMAS",
+          "links": [
+            11
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "Flux2Scheduler"
+      },
+      "widgets_values": [
+        20,
+        1024,
+        1024
+      ],
+      "widgets_values_named": {
+        "steps": 20,
+        "width": 1024,
+        "height": 1024
+      }
+    },
+    {
+      "id": 63,
+      "type": "CFGGuider",
+      "pos": [
+        1603.694906616211,
+        130
+      ],
+      "size": [
+        270,
+        98
+      ],
+      "flags": {},
+      "order": 15,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "model",
+          "type": "MODEL",
+          "link": 4
+        },
+        {
+          "name": "positive",
+          "type": "CONDITIONING",
+          "link": 6
+        },
+        {
+          "name": "negative",
+          "type": "CONDITIONING",
+          "link": 5
+        }
+      ],
+      "outputs": [
+        {
+          "name": "GUIDER",
+          "type": "GUIDER",
+          "links": [
+            7
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CFGGuider"
+      },
+      "widgets_values": [
+        5
+      ],
+      "widgets_values_named": {
+        "cfg": 5
+      }
+    },
+    {
+      "id": 64,
+      "type": "SamplerCustomAdvanced",
+      "pos": [
+        1973.694906616211,
+        130
+      ],
+      "size": [
+        180.51239624023438,
+        106
+      ],
+      "flags": {},
+      "order": 16,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "noise",
+          "type": "NOISE",
+          "link": 9
+        },
+        {
+          "name": "guider",
+          "type": "GUIDER",
+          "link": 7
+        },
+        {
+          "name": "sampler",
+          "type": "SAMPLER",
+          "link": 10
+        },
+        {
+          "name": "sigmas",
+          "type": "SIGMAS",
+          "link": 11
+        },
+        {
+          "name": "latent_image",
+          "type": "LATENT",
+          "link": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output",
+          "type": "LATENT",
+          "links": [
+            12
+          ]
+        },
+        {
+          "name": "denoised_output",
+          "type": "LATENT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "SamplerCustomAdvanced"
+      }
+    },
+    {
+      "id": 65,
+      "type": "VAEDecode",
+      "pos": [
+        2254.2073028564455,
+        130
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 17,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "samples",
+          "type": "LATENT",
+          "link": 12
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 13
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            1
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEDecode"
+      }
+    },
+    {
+      "id": 66,
+      "type": "EmptyFlux2LatentImage",
+      "pos": [
+        1233.694906616211,
+        366
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 12,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "widget": {
+            "name": "width"
+          },
+          "link": 15
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "widget": {
+            "name": "height"
+          },
+          "link": 14
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            8
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "EmptyFlux2LatentImage"
+      },
+      "widgets_values": [
+        1024,
+        1024,
+        1
+      ],
+      "widgets_values_named": {
+        "width": 1024,
+        "height": 1024,
+        "batch_size": 1
+      }
+    },
+    {
+      "id": 67,
+      "type": "CLIPTextEncode",
+      "pos": [
+        470,
+        130
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 6,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 16
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            20
+          ]
+        }
+      ],
+      "title": "Negative",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        ""
+      ],
+      "widgets_values_named": {
+        "text": ""
+      }
+    },
+    {
+      "id": 70,
+      "type": "UNETLoader",
+      "pos": [
+        100,
+        318
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 1,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "MODEL",
+          "type": "MODEL",
+          "links": [
+            4
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "UNETLoader"
+      },
+      "widgets_values": [
+        "flux-2-klein-base-9b-fp8.safetensors",
+        "default"
+      ],
+      "widgets_values_named": {
+        "unet_name": "flux-2-klein-base-9b-fp8.safetensors",
+        "weight_dtype": "default"
+      }
+    },
+    {
+      "id": 71,
+      "type": "CLIPLoader",
+      "pos": [
+        100,
+        530
+      ],
+      "size": [
+        270,
+        106
+      ],
+      "flags": {},
+      "order": 2,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "CLIP",
+          "type": "CLIP",
+          "links": [
+            16,
+            17
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "CLIPLoader"
+      },
+      "widgets_values": [
+        "qwen_3_8b_fp8mixed.safetensors",
+        "flux2",
+        "default"
+      ],
+      "widgets_values_named": {
+        "clip_name": "qwen_3_8b_fp8mixed.safetensors",
+        "type": "flux2",
+        "device": "default"
+      }
+    },
+    {
+      "id": 72,
+      "type": "VAELoader",
+      "pos": [
+        100,
+        766
+      ],
+      "size": [
+        270,
+        58
+      ],
+      "flags": {},
+      "order": 3,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "VAE",
+          "type": "VAE",
+          "links": [
+            13,
+            23
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAELoader"
+      },
+      "widgets_values": [
+        "full_encoder_small_decoder.safetensors"
+      ],
+      "widgets_values_named": {
+        "vae_name": "full_encoder_small_decoder.safetensors"
+      }
+    },
+    {
+      "id": 73,
+      "type": "RandomNoise",
+      "pos": [
+        100,
+        954
+      ],
+      "size": [
+        270,
+        82
+      ],
+      "flags": {},
+      "order": 4,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "NOISE",
+          "type": "NOISE",
+          "links": [
+            9
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "RandomNoise"
+      },
+      "widgets_values": [
+        790308481617737,
+        "randomize"
+      ],
+      "widgets_values_named": {
+        "noise_seed": 790308481617737,
+        "control_after_generate": "randomize"
+      }
+    },
+    {
+      "id": 74,
+      "type": "CLIPTextEncode",
+      "pos": [
+        470,
+        460
+      ],
+      "size": [
+        400,
+        200
+      ],
+      "flags": {},
+      "order": 7,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "clip",
+          "type": "CLIP",
+          "link": 17
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            24
+          ]
+        }
+      ],
+      "title": "Positive",
+      "properties": {
+        "Node name for S&R": "CLIPTextEncode"
+      },
+      "widgets_values": [
+        "Transform the supplied drawing into a finished Silk Road artwork using the painting techniques of a refined 16th-century Persian miniature, presented as a single seamless painting. Use the drawing as the foundation for the subjects and composition, regardless of drawing skill or completeness. Interpret colored regions and rough marks through their shapes, positions, and surrounding context. Color helps distinguish regions; context determines what they represent. Preserve the strongest recognizable elements of the input: the main subjects, their approximate locations, relative sizes, facing directions, expressions, intended actions, and relationships. Keep a large foreground subject large and prominent. Keep close-up subjects close-up. Develop the composition around these anchors rather than replacing them with a different scene. Treat the drawing as a starting point for a fully accomplished painting, not as a limit on detail or finish. Confidently develop rough forms, incomplete details, and empty surroundings into a coherent Silk Road artwork. Use recognizable elements to guide the completion of uncertain areas. The finished image should clearly retain the user's idea while achieving substantially greater visual refinement. Interpret each main subject as one coherent whole. Use its recognizable features, overall silhouette, and context to establish its identity, then render the entire subject consistently. Refine rough anatomy into a plausible body and pose appropriate to that subject. Human figures retain human anatomy; animals retain the anatomy, stance, and natural body covering of the recognized species. Keep visible limbs and connecting objects attached consistently, with hidden parts naturally occluded. Preserve whether the original subjects wear clothing, coverings, or equipment. Refine and ornament existing garments and accessories within their intended areas. Keep exposed skin, fur, feathers, and other natural surfaces exposed and naturally painted. Interpret colored patches in context rather than automatically turning them into garments. Express the Silk Road theme through craftsmanship and surroundings without inventing clothing or equipment for the original subjects. Preserve the identity and broad arrangement of recognizable environmental regions. Existing water remains water, land remains land, and mountains remain mountains. Creatively develop their contours, formations, vegetation, and depth while keeping their compositional roles recognizable. Where the environment is sparse or undefined, create a suitable Silk Road setting around the original subjects. Adapt its scale and complexity to the input composition: a close-up subject receives a supporting backdrop, while a broad scene allows a more extensive landscape. Complete the surroundings without shrinking, moving, obscuring, or replacing the main subjects. Use a consistent visual style throughout: extremely fine dark ink outlines, delicate opaque gouache brushwork, flat pictorial space, restrained modeling, muted lapis blue, earthy vermilion, malachite green, warm ochre, and selective antique-gold accents. Render expressive features, natural animal surfaces, intricate existing textiles, and graceful environmental forms. Keep the finish matte, with subtle pigment variation on a clean, continuous surface. Integrate the original subjects and the developed surroundings through a shared palette, consistent brushwork, appropriate spatial relationships, and natural contact with nearby surfaces. The original subjects remain the visual focus. Develop the surroundings according to the supporting concept below. Let the concept guide background architecture, terrain design, vegetation, and small secondary activities where suitable. Select additions that form one coherent setting rather than including every possible motif. Keep supporting figures and objects subordinate to the original subjects. Maintain the same Persian miniature painting style, palette, line quality, and finish across variations. Allow variation in the supporting environment and decorative details. When the concept conflicts with recognizable input content, adapt the concept to that content. Present only the finished painting, extending to the canvas edges. Use one seamless painted surface without a central crease, page fold, binding gutter, seam, stain, scratch, decorative border, frame, lettering, or interface. Supporting concept: A quiet Silk Road palace setting. Where existing land offers suitable space, integrate a modest distant palace, elegant terraces, and restrained garden planting into the landscape. Shape the surrounding scenery to support the palace setting while retaining the original environmental regions and keeping the main subjects dominant."
+      ],
+      "widgets_values_named": {
+        "text": "Transform the supplied drawing into a finished Silk Road artwork using the painting techniques of a refined 16th-century Persian miniature, presented as a single seamless painting. Use the drawing as the foundation for the subjects and composition, regardless of drawing skill or completeness. Interpret colored regions and rough marks through their shapes, positions, and surrounding context. Color helps distinguish regions; context determines what they represent. Preserve the strongest recognizable elements of the input: the main subjects, their approximate locations, relative sizes, facing directions, expressions, intended actions, and relationships. Keep a large foreground subject large and prominent. Keep close-up subjects close-up. Develop the composition around these anchors rather than replacing them with a different scene. Treat the drawing as a starting point for a fully accomplished painting, not as a limit on detail or finish. Confidently develop rough forms, incomplete details, and empty surroundings into a coherent Silk Road artwork. Use recognizable elements to guide the completion of uncertain areas. The finished image should clearly retain the user's idea while achieving substantially greater visual refinement. Interpret each main subject as one coherent whole. Use its recognizable features, overall silhouette, and context to establish its identity, then render the entire subject consistently. Refine rough anatomy into a plausible body and pose appropriate to that subject. Human figures retain human anatomy; animals retain the anatomy, stance, and natural body covering of the recognized species. Keep visible limbs and connecting objects attached consistently, with hidden parts naturally occluded. Preserve whether the original subjects wear clothing, coverings, or equipment. Refine and ornament existing garments and accessories within their intended areas. Keep exposed skin, fur, feathers, and other natural surfaces exposed and naturally painted. Interpret colored patches in context rather than automatically turning them into garments. Express the Silk Road theme through craftsmanship and surroundings without inventing clothing or equipment for the original subjects. Preserve the identity and broad arrangement of recognizable environmental regions. Existing water remains water, land remains land, and mountains remain mountains. Creatively develop their contours, formations, vegetation, and depth while keeping their compositional roles recognizable. Where the environment is sparse or undefined, create a suitable Silk Road setting around the original subjects. Adapt its scale and complexity to the input composition: a close-up subject receives a supporting backdrop, while a broad scene allows a more extensive landscape. Complete the surroundings without shrinking, moving, obscuring, or replacing the main subjects. Use a consistent visual style throughout: extremely fine dark ink outlines, delicate opaque gouache brushwork, flat pictorial space, restrained modeling, muted lapis blue, earthy vermilion, malachite green, warm ochre, and selective antique-gold accents. Render expressive features, natural animal surfaces, intricate existing textiles, and graceful environmental forms. Keep the finish matte, with subtle pigment variation on a clean, continuous surface. Integrate the original subjects and the developed surroundings through a shared palette, consistent brushwork, appropriate spatial relationships, and natural contact with nearby surfaces. The original subjects remain the visual focus. Develop the surroundings according to the supporting concept below. Let the concept guide background architecture, terrain design, vegetation, and small secondary activities where suitable. Select additions that form one coherent setting rather than including every possible motif. Keep supporting figures and objects subordinate to the original subjects. Maintain the same Persian miniature painting style, palette, line quality, and finish across variations. Allow variation in the supporting environment and decorative details. When the concept conflicts with recognizable input content, adapt the concept to that content. Present only the finished painting, extending to the canvas edges. Use one seamless painted surface without a central crease, page fold, binding gutter, seam, stain, scratch, decorative border, frame, lettering, or interface. Supporting concept: A quiet Silk Road palace setting. Where existing land offers suitable space, integrate a modest distant palace, elegant terraces, and restrained garden planting into the landscape. Shape the surrounding scenery to support the palace setting while retaining the original environmental regions and keeping the main subjects dominant."
+      }
+    },
+    {
+      "id": 76,
+      "type": "LoadImage",
+      "pos": [
+        100,
+        1166
+      ],
+      "size": [
+        270,
+        102
+      ],
+      "flags": {},
+      "order": 5,
+      "mode": 0,
+      "inputs": [],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            18
+          ]
+        },
+        {
+          "name": "MASK",
+          "type": "MASK",
+          "links": null
+        }
+      ],
+      "title": "Input drawing (Unity)",
+      "properties": {
+        "Node name for S&R": "LoadImage"
+      },
+      "widgets_values": [
+        "60577d3504d303e29f70670cc2c9483c0667985ecec1d21ac753f5354a16a1a3.png",
+        "image"
+      ],
+      "widgets_values_named": {
+        "image": "60577d3504d303e29f70670cc2c9483c0667985ecec1d21ac753f5354a16a1a3.png",
+        "upload": "image"
+      }
+    },
+    {
+      "id": 80,
+      "type": "ImageScaleToTotalPixels",
+      "pos": [
+        470,
+        790
+      ],
+      "size": [
+        303.8448547363281,
+        106
+      ],
+      "flags": {},
+      "order": 8,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 18
+        }
+      ],
+      "outputs": [
+        {
+          "name": "IMAGE",
+          "type": "IMAGE",
+          "links": [
+            19,
+            22
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ImageScaleToTotalPixels"
+      },
+      "widgets_values": [
+        "lanczos",
+        1,
+        1
+      ],
+      "widgets_values_named": {
+        "upscale_method": "lanczos",
+        "megapixels": 1,
+        "resolution_steps": 1
+      }
+    },
+    {
+      "id": 100,
+      "type": "GetImageSize",
+      "pos": [
+        970,
+        130
+      ],
+      "size": [
+        163.69490661621094,
+        66
+      ],
+      "flags": {},
+      "order": 9,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "image",
+          "type": "IMAGE",
+          "link": 19
+        }
+      ],
+      "outputs": [
+        {
+          "name": "width",
+          "type": "INT",
+          "links": [
+            3,
+            15
+          ]
+        },
+        {
+          "name": "height",
+          "type": "INT",
+          "links": [
+            2,
+            14
+          ]
+        },
+        {
+          "name": "batch_size",
+          "type": "INT",
+          "links": null
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "GetImageSize"
+      }
+    },
+    {
+      "id": 122,
+      "type": "ReferenceLatent",
+      "pos": [
+        1233.694906616211,
+        602
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 13,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 20
+        },
+        {
+          "name": "latent",
+          "shape": 7,
+          "type": "LATENT",
+          "link": 21
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            5
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ReferenceLatent"
+      }
+    },
+    {
+      "id": 123,
+      "type": "VAEEncode",
+      "pos": [
+        970,
+        326
+      ],
+      "size": [
+        162.14993286132812,
+        46
+      ],
+      "flags": {},
+      "order": 10,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "pixels",
+          "type": "IMAGE",
+          "link": 22
+        },
+        {
+          "name": "vae",
+          "type": "VAE",
+          "link": 23
+        }
+      ],
+      "outputs": [
+        {
+          "name": "LATENT",
+          "type": "LATENT",
+          "links": [
+            21,
+            25
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "VAEEncode"
+      }
+    },
+    {
+      "id": 124,
+      "type": "ReferenceLatent",
+      "pos": [
+        1233.694906616211,
+        778
+      ],
+      "size": [
+        140,
+        46
+      ],
+      "flags": {},
+      "order": 14,
+      "mode": 0,
+      "inputs": [
+        {
+          "name": "conditioning",
+          "type": "CONDITIONING",
+          "link": 24
+        },
+        {
+          "name": "latent",
+          "shape": 7,
+          "type": "LATENT",
+          "link": 25
+        }
+      ],
+      "outputs": [
+        {
+          "name": "CONDITIONING",
+          "type": "CONDITIONING",
+          "links": [
+            6
+          ]
+        }
+      ],
+      "properties": {
+        "Node name for S&R": "ReferenceLatent"
+      }
+    }
+  ],
+  "links": [
+    [
+      1,
+      65,
+      0,
+      9,
+      0,
+      "IMAGE"
+    ],
+    [
+      2,
+      100,
+      1,
+      62,
+      1,
+      "INT"
+    ],
+    [
+      3,
+      100,
+      0,
+      62,
+      0,
+      "INT"
+    ],
+    [
+      4,
+      70,
+      0,
+      63,
+      0,
+      "MODEL"
+    ],
+    [
+      5,
+      122,
+      0,
+      63,
+      2,
+      "CONDITIONING"
+    ],
+    [
+      6,
+      124,
+      0,
+      63,
+      1,
+      "CONDITIONING"
+    ],
+    [
+      7,
+      63,
+      0,
+      64,
+      1,
+      "GUIDER"
+    ],
+    [
+      8,
+      66,
+      0,
+      64,
+      4,
+      "LATENT"
+    ],
+    [
+      9,
+      73,
+      0,
+      64,
+      0,
+      "NOISE"
+    ],
+    [
+      10,
+      61,
+      0,
+      64,
+      2,
+      "SAMPLER"
+    ],
+    [
+      11,
+      62,
+      0,
+      64,
+      3,
+      "SIGMAS"
+    ],
+    [
+      12,
+      64,
+      0,
+      65,
+      0,
+      "LATENT"
+    ],
+    [
+      13,
+      72,
+      0,
+      65,
+      1,
+      "VAE"
+    ],
+    [
+      14,
+      100,
+      1,
+      66,
+      1,
+      "INT"
+    ],
+    [
+      15,
+      100,
+      0,
+      66,
+      0,
+      "INT"
+    ],
+    [
+      16,
+      71,
+      0,
+      67,
+      0,
+      "CLIP"
+    ],
+    [
+      17,
+      71,
+      0,
+      74,
+      0,
+      "CLIP"
+    ],
+    [
+      18,
+      76,
+      0,
+      80,
+      0,
+      "IMAGE"
+    ],
+    [
+      19,
+      80,
+      0,
+      100,
+      0,
+      "IMAGE"
+    ],
+    [
+      20,
+      67,
+      0,
+      122,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      21,
+      123,
+      0,
+      122,
+      1,
+      "LATENT"
+    ],
+    [
+      22,
+      80,
+      0,
+      123,
+      0,
+      "IMAGE"
+    ],
+    [
+      23,
+      72,
+      0,
+      123,
+      1,
+      "VAE"
+    ],
+    [
+      24,
+      74,
+      0,
+      124,
+      0,
+      "CONDITIONING"
+    ],
+    [
+      25,
+      123,
+      0,
+      124,
+      1,
+      "LATENT"
+    ]
+  ],
+  "groups": [],
+  "config": {},
+  "extra": {
+    "ds": {
+      "scale": 0.6924285881034576,
+      "offset": [
+        1225.8412791397923,
+        519.6700409490621
+      ]
+    },
+    "frontendVersion": "1.56.3",
+    "VHS_latentpreview": false,
+    "VHS_latentpreviewrate": 0,
+    "VHS_MetadataImage": true,
+    "VHS_KeepIntermediate": true
+  },
+  "version": 0.4
+}

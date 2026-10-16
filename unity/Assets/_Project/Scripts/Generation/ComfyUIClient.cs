@@ -25,6 +25,10 @@ namespace Silkroad
         public string theme;
         public string preset;
         public string workflow;
+        public string inputSha256;
+        public string inputAssetId;
+        public string outputNode;
+        public string outputAssetId;
     }
 
     public partial class ComfyUIClient : MonoBehaviour
@@ -202,7 +206,14 @@ namespace Silkroad
         }
 
         /// <summary>프리셋 seed 가 있으면 seed + 재요청 횟수, 없으면 랜덤.</summary>
-        long PickSeed(GenerationPreset p) => p != null && p.seed > 0 ? p.seed + _variation : UnityEngine.Random.Range(1, int.MaxValue);
+        long PickSeed(GenerationPreset p)
+        {
+            if (p == null || p.seed <= 0 || (_variation > 0 && p.seedControl == "randomize"))
+                return UnityEngine.Random.Range(1, int.MaxValue);
+            if (p.seedControl == "fixed") return p.seed;
+            if (p.seedControl == "decrement") return Math.Max(0, p.seed - _variation);
+            return p.seed + _variation;
+        }
 
         // ───────────── 더미 모드 ─────────────
         IEnumerator DummyRoutine(byte[] png, Action<string> onStatus, Action<Texture2D, GenerationInfo> onDone)
